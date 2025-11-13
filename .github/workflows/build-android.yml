@@ -1,4 +1,4 @@
-name: Build Android AAB
+name: Build Android APK and AAB
 
 on:
   push:
@@ -29,9 +29,7 @@ jobs:
         npm install
         cordova platform remove android --save
         cordova platform add android@13.0.0
-        # Remove problematic plugins
         cordova plugin remove cordova-plugin-whitelist --force || true
-        # Add only essential plugins
         cordova plugin add cordova-plugin-media
         cordova plugin add cordova-plugin-network-information
         
@@ -39,9 +37,18 @@ jobs:
       run: |
         cordova build android --release -- --packageType=bundle
         
+    - name: Build Android APK
+      run: |
+        cordova build android --release
+        
     - name: Upload AAB artifact
       uses: actions/upload-artifact@v4
       with:
         name: kls-radio-app-aab
         path: platforms/android/app/build/outputs/bundle/release/*.aab
-        retention-days: 30
+        
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: kls-radio-app-apk
+        path: platforms/android/app/build/outputs/apk/release/*.apk
