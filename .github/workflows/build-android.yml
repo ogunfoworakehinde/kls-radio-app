@@ -23,17 +23,17 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Install Cordova
+    - name: Install Cordova and setup
       run: |
         npm install -g cordova
-        
-    - name: Install dependencies
-      run: |
         npm install
-        
-    - name: Add Android platform
-      run: |
-        cordova platform add android
+        cordova platform remove android --save
+        cordova platform add android@13.0.0
+        # Remove problematic plugins
+        cordova plugin remove cordova-plugin-whitelist --force || true
+        # Add only essential plugins
+        cordova plugin add cordova-plugin-media
+        cordova plugin add cordova-plugin-network-information
         
     - name: Build Android AAB
       run: |
