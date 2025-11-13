@@ -3,7 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap:; style-src * 'self' 'unsafe-inline'; media-src *; connect-src *;">
+<meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: file: filesystem: ws: wss:; style-src * 'self' 'unsafe-inline'; script-src * 'self' 'unsafe-inline' 'unsafe-eval'; media-src *; connect-src *;">
+
+<!-- Add this for Android file access -->
+<meta name="format-detection" content="telephone=no">
+<meta name="msapplication-tap-highlight" content="no">
+
     <!-- Theme Color -->
 <meta name="theme-color" content="#0a2463"> <!-- Purple, common for spiritual/religious brands -->
 
@@ -1725,6 +1730,15 @@
 
 </head>
 <body>
+<script type="text/javascript" src="cordova.js"></script>
+<script type="text/javascript">
+    document.addEventListener("deviceready", onDeviceReady, false);
+    
+    function onDeviceReady() {
+        console.log("Cordova is ready!");
+        // Your app initialization code here
+    }
+</script>
 
 <script type="text/javascript" src="js/index.js"></script>
     <!-- Header -->

@@ -6,6 +6,8 @@
         Kingdom Lifestyle Radio
     </author>
     <content src="index.html" />
+    <allow-navigation href="*" />
+    <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-intent href="tel:*" />
@@ -14,6 +16,6 @@
     <allow-intent href="geo:*" />
     <platform name="android">
         <allow-intent href="market:*" />
+        <preference name="AndroidInsecureFileModeEnabled" value="true" />
     </platform>
-    <preference name="AndroidWindowSplashScreenAnimatedIcon" value="screen" />
 </widget>
