@@ -7,9 +7,6 @@
     </author>
     <content src="index.html" />
     
-    <!-- App Icons -->
-    <icon src="www/images/icon.png" />
-    
     <!-- Android specific icons -->
     <platform name="android">
         <!-- Launcher icons -->
