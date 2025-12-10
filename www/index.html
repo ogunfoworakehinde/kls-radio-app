@@ -2355,6 +2355,18 @@
 
     <!-- Scripts -->
 
+<script>
+document.addEventListener('deviceready', onDeviceReady, false);
+
+function onDeviceReady() {
+    console.log('Device is ready');
+    // Splash screen will auto-hide after delay
+    // Or manually control it:
+    // navigator.splashscreen.hide();
+}
+</script>
+
+
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
 
