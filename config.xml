@@ -1,31 +1,26 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.kingdomlifestyleradio.klsradio" version="1.0.0" xmlns="http://www.w3.org/ns/widgets">
+<widget id="com.kingdomlifestyleradio.klsradio" version="8.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>KLS Radio</name>
-    <description>Kingdom Lifestyle Radio Streaming</description>
+    <description>KLS Radio Streaming App</description>
     <author email="ogunfoworakehinde55@gmail.com" href="https://kingdomlifestyleradio.com">
         Kingdom Lifestyle Radio
     </author>
-    
     <content src="index.html" />
     
-    <!-- Simple icon -->
+    <!-- Single icon in www/images/ -->
     <icon src="www/images/icon.png" />
     
-    <!-- Basic permissions -->
-    <access origin="*" />
     <allow-navigation href="*" />
+    <access origin="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="geo:*" />
     
-    <!-- Android platform -->
     <platform name="android">
-        <!-- Simple preferences only -->
-        <preference name="AndroidInsecureFileModeEnabled" value="true" />
-        <preference name="LoadUrlTimeoutValue" value="60000" />
-        
-        <!-- Status bar (if plugin installed) -->
-        <preference name="StatusBarBackgroundColor" value="#000000" />
-        
         <allow-intent href="market:*" />
+        <preference name="AndroidInsecureFileModeEnabled" value="true" />
     </platform>
 </widget>

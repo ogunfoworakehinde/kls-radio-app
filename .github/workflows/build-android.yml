@@ -31,12 +31,11 @@ jobs:
         cordova platform add android@13.0.0
         # Clean install - no whitelist, no splashscreen
         cordova plugin remove cordova-plugin-whitelist --force || true
-        cordova plugin remove cordova-plugin-splashscreen --force || true
-        # Install only what you need
+              # Install only what you need
         cordova plugin add cordova-plugin-media
         cordova plugin add cordova-plugin-network-information
-        # Don't add statusbar unless you're using it
-        # cordova plugin add cordova-plugin-statusbar
+        
+
         
     - name: Build Android AAB
       run: |
