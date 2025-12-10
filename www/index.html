@@ -2356,14 +2356,22 @@
     <!-- Scripts -->
 
 <script>
-document.addEventListener('deviceready', onDeviceReady, false);
-
-function onDeviceReady() {
-    console.log('Device is ready');
-    // Splash screen will auto-hide after delay
-    // Or manually control it:
-    // navigator.splashscreen.hide();
-}
+document.addEventListener('deviceready', function() {
+    console.log('DEVICE READY - Splash should be visible');
+    
+    // Manually control splash for testing
+    if(navigator.splashscreen) {
+        console.log('SplashScreen plugin found');
+        
+        // Keep splash visible for 7 seconds
+        setTimeout(function() {
+            console.log('Hiding splash manually');
+            navigator.splashscreen.hide();
+        }, 7000);
+    } else {
+        console.error('NO SplashScreen plugin!');
+    }
+}, false);
 </script>
 
 
