@@ -19,17 +19,17 @@
     <allow-intent href="mailto:*" />
     <allow-intent href="geo:*" />
     
-    <platform name="android">
-    <!-- SINGLE splash entry with correct name -->
-    <splash src="www/images/screen.png" />
+  <platform name="android">
+    <!-- REMOVE ALL SPLASH CONFIG TEMPORARILY -->
+    <!-- <splash src="www/images/screen.png" /> -->
+    <!-- <preference name="SplashScreen" value="screen" /> -->
+    <!-- <preference name="SplashScreenDelay" value="5000" /> -->
     
-    <!-- CRITICAL SETTINGS -->
-    <preference name="SplashScreen" value="screen" />
-    <preference name="SplashScreenDelay" value="7000" />
-    <preference name="AutoHideSplashScreen" value="false" />
-    <preference name="ShowSplashScreenSpinner" value="false" />
-    
+    <!-- Keep only these -->
     <allow-intent href="market:*" />
     <preference name="AndroidInsecureFileModeEnabled" value="true" />
+    
+    <!-- ADD THIS to prevent splash from showing at all -->
+    <preference name="SplashScreen" value="none" />
 </platform>
 </widget>

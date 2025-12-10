@@ -2355,24 +2355,7 @@
 
     <!-- Scripts -->
 
-<script>
-document.addEventListener('deviceready', function() {
-    console.log('DEVICE READY - Splash should be visible');
-    
-    // Manually control splash for testing
-    if(navigator.splashscreen) {
-        console.log('SplashScreen plugin found');
-        
-        // Keep splash visible for 7 seconds
-        setTimeout(function() {
-            console.log('Hiding splash manually');
-            navigator.splashscreen.hide();
-        }, 7000);
-    } else {
-        console.error('NO SplashScreen plugin!');
-    }
-}, false);
-</script>
+<!-- CRITICAL: Force splash to hide --> <script type="text/javascript" src="cordova.js"></script> <script> // Emergency splash hide - works even if deviceready doesn't fire document.addEventListener('DOMContentLoaded', function() { console.log('DOM loaded - trying to hide splash'); // Try immediately if (window.navigator && navigator.splashscreen) { console.log('Hiding splash immediately'); navigator.splashscreen.hide(); } // Try after delay setTimeout(function() { if (navigator.splashscreen) { console.log('Hiding splash after timeout'); navigator.splashscreen.hide(); } }, 3000); // Backup: Use cordova exec setTimeout(function() { if (window.cordova && cordova.exec) { console.log('Using cordova.exec to hide splash'); cordova.exec(null, null, 'SplashScreen', 'hide', []); } }, 5000); }); // Also try deviceready document.addEventListener('deviceready', function() { console.log('DEVICEREADY FIRED!'); if (navigator.splashscreen) { navigator.splashscreen.hide(); } }, false); </script> 
 
 
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
