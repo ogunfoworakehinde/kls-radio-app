@@ -7,7 +7,7 @@
     </author>
     <content src="index.html" />
     
-    <!-- Single icon in www/images/ -->
+    <!-- App Icon -->
     <icon src="www/images/icon.png" />
     
     <allow-navigation href="*" />
@@ -20,7 +20,37 @@
     <allow-intent href="geo:*" />
     
     <platform name="android">
+        <!-- Optional: Android-specific icons if you have multiple sizes -->
+        <!-- <icon density="ldpi" src="www/images/icon-36-ldpi.png" /> -->
+        <!-- <icon density="mdpi" src="www/images/icon-48-mdpi.png" /> -->
+        <!-- <icon density="hdpi" src="www/images/icon-72-hdpi.png" /> -->
+        <!-- <icon density="xhdpi" src="www/images/icon-96-xhdpi.png" /> -->
+        <!-- <icon density="xxhdpi" src="www/images/icon-144-xxhdpi.png" /> -->
+        <!-- <icon density="xxxhdpi" src="www/images/icon-192-xxxhdpi.png" /> -->
+        
+        <!-- Splash Screen -->
+        <splash src="www/images/splash.png" density="land-ldpi"/>
+        <splash src="www/images/splash.png" density="land-mdpi"/>
+        <splash src="www/images/splash.png" density="land-hdpi"/>
+        <splash src="www/images/splash.png" density="land-xhdpi"/>
+        <splash src="www/images/splash.png" density="land-xxhdpi"/>
+        <splash src="www/images/splash.png" density="land-xxxhdpi"/>
+        <splash src="www/images/splash.png" density="port-ldpi"/>
+        <splash src="www/images/splash.png" density="port-mdpi"/>
+        <splash src="www/images/splash.png" density="port-hdpi"/>
+        <splash src="www/images/splash.png" density="port-xhdpi"/>
+        <splash src="www/images/splash.png" density="port-xxhdpi"/>
+        <splash src="www/images/splash.png" density="port-xxxhdpi"/>
+        
         <allow-intent href="market:*" />
         <preference name="AndroidInsecureFileModeEnabled" value="true" />
+        
+        <!-- Splash screen preferences -->
+        <preference name="SplashMaintainAspectRatio" value="true" />
+        <preference name="SplashShowOnlyFirstTime" value="false" />
+        <preference name="SplashScreen" value="screen" />
+        <preference name="SplashScreenDelay" value="3000" />
+        <preference name="AutoHideSplashScreen" value="true" />
+        <preference name="ShowSplashScreenSpinner" value="false" />
     </platform>
 </widget>
