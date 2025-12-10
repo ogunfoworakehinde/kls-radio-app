@@ -1,51 +1,30 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.kingdomlifestyleradio.klsradio" version="8.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
-    <name>KLSR</name>
-    <description>KLS Radio Streaming App</description>
+<widget id="com.kingdomlifestyleradio.klsradio" version="1.0.0" xmlns="http://www.w3.org/ns/widgets">
+    <name>KLS Radio</name>
+    <description>Kingdom Lifestyle Radio Streaming</description>
     <author email="ogunfoworakehinde55@gmail.com" href="https://kingdomlifestyleradio.com">
         Kingdom Lifestyle Radio
     </author>
+    
     <content src="index.html" />
     
-    <!-- App Icon -->
+    <!-- Simple icon -->
     <icon src="www/images/icon.png" />
     
-    <!-- Keep splash disabled but add styling preferences -->
-    <preference name="SplashScreen" value="none" />
-    <preference name="AutoHideSplashScreen" value="true" />
-    
-    <allow-navigation href="*" />
+    <!-- Basic permissions -->
     <access origin="*" />
+    <allow-navigation href="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
-    <allow-intent href="tel:*" />
-    <allow-intent href="sms:*" />
-    <allow-intent href="mailto:*" />
-    <allow-intent href="geo:*" />
     
+    <!-- Android platform -->
     <platform name="android">
-        <!-- CRITICAL FOR STYLING: Viewport & Display -->
-        <preference name="DisallowOverscroll" value="true" />
-        <preference name="BackgroundColor" value="0xFFFFFFFF" />
-        <preference name="android-minSdkVersion" value="22" />
-        <preference name="android-targetSdkVersion" value="33" />
-        
-        <!-- Status Bar Control -->
-        <preference name="StatusBarOverlaysWebView" value="false" />
-        <preference name="StatusBarBackgroundColor" value="#000000" />
-        <preference name="StatusBarStyle" value="lightcontent" />
-        
-        <!-- Fullscreen & Immersive Mode -->
-        <preference name="Fullscreen" value="false" />
-        <preference name="AndroidLaunchMode" value="singleTask" />
-        
-        <!-- WebView Settings -->
+        <!-- Simple preferences only -->
         <preference name="AndroidInsecureFileModeEnabled" value="true" />
         <preference name="LoadUrlTimeoutValue" value="60000" />
-        <preference name="WebViewBounce" value="false" />
-        <preference name="UIWebViewBounce" value="false" />
-        <preference name="DisallowOverscroll" value="true" />
-        <preference name="HideKeyboardFormAccessoryBar" value="true" />
+        
+        <!-- Status bar (if plugin installed) -->
+        <preference name="StatusBarBackgroundColor" value="#000000" />
         
         <allow-intent href="market:*" />
     </platform>

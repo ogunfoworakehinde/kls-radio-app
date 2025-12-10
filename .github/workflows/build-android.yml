@@ -29,14 +29,14 @@ jobs:
         npm install
         cordova platform remove android --save
         cordova platform add android@13.0.0
-        # Remove ALL splash-related plugins
-        cordova plugin remove cordova-plugin-splashscreen --force || true
-        cordova plugin remove cordova-plugin-whitelist --force || true
-        # Install only essential plugins
-        cordova plugin add cordova-plugin-media
-        cordova plugin add cordova-plugin-network-information
-        # Verify plugins
-        cordova plugins
+            # Clean install - no whitelist, no splashscreen
+    cordova plugin remove cordova-plugin-whitelist --force || true
+    cordova plugin remove cordova-plugin-splashscreen --force || true
+    # Install only what you need
+    cordova plugin add cordova-plugin-media
+    cordova plugin add cordova-plugin-network-information
+    # Don't add statusbar unless you're using it
+    # cordova plugin add cordova-plugin-statusbar
 
     - name: Build Android AAB
       run: |
