@@ -32,7 +32,8 @@ jobs:
         cordova plugin remove cordova-plugin-whitelist --force || true
         cordova plugin add cordova-plugin-media
         cordova plugin add cordova-plugin-network-information
-        
+        cordova plugin add cordova-plugin-splashscreen
+
     - name: Build Android AAB
       run: |
         cordova build android --release -- --packageType=bundle
