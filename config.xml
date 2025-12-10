@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='utf-8'?>
 <widget id="com.kingdomlifestyleradio.klsradio" version="8.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
-    <name>Kingdom Lifestyle Radio</name>
+    <name>KLSR</name>
     <description>KLS Radio Streaming App</description>
     <author email="ogunfoworakehinde55@gmail.com" href="https://kingdomlifestyleradio.com">
         Kingdom Lifestyle Radio
@@ -19,17 +19,19 @@
     <allow-intent href="mailto:*" />
     <allow-intent href="geo:*" />
     
-  <platform name="android">
-    <!-- REMOVE ALL SPLASH CONFIG TEMPORARILY -->
-    <!-- <splash src="www/images/screen.png" /> -->
-    <!-- <preference name="SplashScreen" value="screen" /> -->
-    <!-- <preference name="SplashScreenDelay" value="5000" /> -->
-    
-    <!-- Keep only these -->
-    <allow-intent href="market:*" />
-    <preference name="AndroidInsecureFileModeEnabled" value="true" />
-    
-    <!-- ADD THIS to prevent splash from showing at all -->
-    <preference name="SplashScreen" value="none" />
-</platform>
+    <platform name="android">
+        <!-- NO SPLASH SCREEN AT ALL -->
+        <preference name="SplashScreen" value="none" />
+        <preference name="SplashScreenDelay" value="0" />
+        <preference name="AutoHideSplashScreen" value="true" />
+        <preference name="ShowSplashScreen" value="false" />
+        
+        <!-- Also remove any default splash images -->
+        <preference name="SplashMaintainAspectRatio" value="false" />
+        <preference name="FadeSplashScreen" value="false" />
+        
+        <allow-intent href="market:*" />
+        <preference name="AndroidInsecureFileModeEnabled" value="true" />
+        <preference name="LoadUrlTimeoutValue" value="60000" />
+    </platform>
 </widget>
