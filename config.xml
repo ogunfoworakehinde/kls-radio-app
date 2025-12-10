@@ -10,6 +10,10 @@
     <!-- App Icon -->
     <icon src="www/images/icon.png" />
     
+    <!-- Keep splash disabled but add styling preferences -->
+    <preference name="SplashScreen" value="none" />
+    <preference name="AutoHideSplashScreen" value="true" />
+    
     <allow-navigation href="*" />
     <access origin="*" />
     <allow-intent href="http://*/*" />
@@ -20,18 +24,29 @@
     <allow-intent href="geo:*" />
     
     <platform name="android">
-        <!-- NO SPLASH SCREEN AT ALL -->
-        <preference name="SplashScreen" value="none" />
-        <preference name="SplashScreenDelay" value="0" />
-        <preference name="AutoHideSplashScreen" value="true" />
-        <preference name="ShowSplashScreen" value="false" />
+        <!-- CRITICAL FOR STYLING: Viewport & Display -->
+        <preference name="DisallowOverscroll" value="true" />
+        <preference name="BackgroundColor" value="0xFFFFFFFF" />
+        <preference name="android-minSdkVersion" value="22" />
+        <preference name="android-targetSdkVersion" value="33" />
         
-        <!-- Also remove any default splash images -->
-        <preference name="SplashMaintainAspectRatio" value="false" />
-        <preference name="FadeSplashScreen" value="false" />
+        <!-- Status Bar Control -->
+        <preference name="StatusBarOverlaysWebView" value="false" />
+        <preference name="StatusBarBackgroundColor" value="#000000" />
+        <preference name="StatusBarStyle" value="lightcontent" />
         
-        <allow-intent href="market:*" />
+        <!-- Fullscreen & Immersive Mode -->
+        <preference name="Fullscreen" value="false" />
+        <preference name="AndroidLaunchMode" value="singleTask" />
+        
+        <!-- WebView Settings -->
         <preference name="AndroidInsecureFileModeEnabled" value="true" />
         <preference name="LoadUrlTimeoutValue" value="60000" />
+        <preference name="WebViewBounce" value="false" />
+        <preference name="UIWebViewBounce" value="false" />
+        <preference name="DisallowOverscroll" value="true" />
+        <preference name="HideKeyboardFormAccessoryBar" value="true" />
+        
+        <allow-intent href="market:*" />
     </platform>
 </widget>
