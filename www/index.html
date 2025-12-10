@@ -1,20 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-     <meta charset="utf-8">
-    
-    <!-- CRITICAL: Viewport for mobile -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    
-    <!-- Prevent phone number detection -->
-    <meta name="format-detection" content="telephone=no">
-    
-    <!-- Status bar styling (for iOS but helps Android too) -->
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    
-    <!-- Prevent 300ms tap delay -->
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <!-- Theme Color -->
     <meta name="theme-color" content="#0a0f2d">
@@ -406,7 +394,6 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-     
         /* Typography with High Contrast */
         h1, h2, h3, h4, h5, h6 {
             font-family: var(--mdc-font-family-heading);
@@ -1574,45 +1561,34 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(10, 15, 45, 0.3);
         }
-        
-      .post-content img { 
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 15px auto;  /* centers and adds spacing */
-    border-radius: 8px; /* optional: make them look neat */
-}
-
     </style>
 </head>
 <body class="theme-deep-blue">
-  
     <!-- Loading Screen -->
- <div class="loading-screen" id="loadingScreen">
-    <div class="book-container">
-        <div class="book">
-            <div class="book-cover">
-                <img src="images/logo.png" style="height:50px; width:50px;">
-                <div class="welcome-text">Tuning In To Kingdom Lifestyle Radio</div>
-                <div class="motto-container">
-                    <div class="motto-text" id="mottoText">Live Broadcast Loading...</div>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="book-container">
+            <div class="book">
+                <div class="book-cover">
+                    <img src="images/logo.png" style="height:50px; width:50px;">
+                    <div class="welcome-text">Welcome to Kingdom Lifestyle Radio</div>
+                    <div class="motto-container">
+                        <div class="motto-text" id="mottoText"></div>
+                    </div>
+                    <div class="spine"></div>
                 </div>
-                <div class="spine"></div>
+                <div class="book-content">
+                    <div class="welcome-text">Welcome to Kingdom Lifestyle Radio</div>
+                    <div class="motto-container">
+                        <div class="motto-text">God Is Great</div>
+                    </div> 
+                </div>
+                 <div class="pages"></div>
             </div>
-            <div class="book-content">
-                <div class="welcome-text">Kingdom Lifestyle Radio - On Air</div>
-                <div class="motto-container">
-                    <div class="motto-text">Connecting You To Divine Frequency</div>
-                </div> 
-            </div>
-             <div class="pages"></div>
+        </div>
+        <div class="loading-progress">
+            <div class="progress-bar" id="progressBar"></div>
         </div>
     </div>
-    <div class="loading-progress">
-        <div class="progress-bar" id="progressBar"></div>
-        <div class="broadcast-status">Synchronizing Broadcast...</div>
-    </div>
-</div>
 
     <!-- Top App Bar -->
     <header class="mdc-top-app-bar">
@@ -1962,28 +1938,28 @@
                             <div class="mdc-grid grid-3 mt-3">
                                 <div class="mdc-card">
                                     <div class="card-content text-center">
-                                        <div class="blog-image"> <img src="images/team1.png" style="height:100%; width:100%;">
+                                        <div class="blog-image"> <img src="images/team1.png" style="height:150px; width:150px;">
                                         </div>
-                                        <h4>Lekan Oleyede</h4>
-                                        <p>Founder & Director</p>
+                                        <h4>Pastor Olalekan</h4>
+                                        <p>Founder & Spiritual Director</p>
                                     </div>
                                 </div>
                                 <div class="mdc-card">
                                     <div class="card-content text-center">
                                         <div class="blog-image">
-                                             <img src="images/manager.png" style="height:100%; width:100%;">
+                                             <img src="images/manager.png" style="height:150px; width:150px;">
                                             </div>
-                                        <h4>Omowunmi Abolade</h4>
-                                        <p>Operations Manager</p>
+                                        <h4>Manager</h4>
+                                        <p>Content Development</p>
                                     </div>
                                 </div>
                                 <div class="mdc-card">
                                     <div class="card-content text-center">
                                         <div class="blog-image">
-                                             <img src="images/voice.png" style="height:100%; width:100%;">
+                                             <img src="images/voice.png" style="height:150px; width:150px;">
                                             </div>
-                                        <h4>Angel Ifechukwu</h4>
-                                        <p>Voice Over Artist</p>
+                                        <h4>Voice Artist</h4>
+                                        <p>Creative Production</p>
                                     </div>
                                 </div>
                             </div>
@@ -2154,7 +2130,7 @@
                                             <i class="material-icons">whatshot</i>
                                             WhatsApp
                                         </a>
-                                        <a href="https://www.facebook.com/kingdomLifestyleradio/&ved=2ahUKEwjaqfCqprKRAxX8UUEAHTr7EBYQFnoECCIQAQ&usg=AOvVaw2CJwJ6O7znK4fYgTRJmHQt" class="share-btn share-facebook" target="_blank">
+                                        <a href="https://facebook.com/kingdomLifestyleradio" class="share-btn share-facebook" target="_blank">
                                             <i class="material-icons">facebook</i>
                                             Facebook
                                         </a>
@@ -2166,11 +2142,11 @@
                                             <i class="material-icons">camera_alt</i>
                                             Instagram
                                         </a>
-                                        <a href="https://m.youtube.com/channel/UC64-kfcZkFuIi83pPqFpECQ" class="share-btn" style="background: #FF0000;" target="_blank">
+                                        <a href="https://youtube.com/@kingdomLifestyle-radio" class="share-btn" style="background: #FF0000;" target="_blank">
                                             <i class="material-icons">videocam</i>
                                             YouTube
                                         </a>
-                                        <a href="https://t.me/kingdomlifestyleradio" class="share-btn share-telegram" target="_blank">
+                                        <a href="https://t.me/kingdomlifestyle" class="share-btn share-telegram" target="_blank">
                                             <i class="material-icons">telegram</i>
                                             Telegram
                                         </a>
@@ -2203,7 +2179,7 @@
                                 <h1>Settings</h1>
                                 <p>Customize your app experience</p>
                             </div>
-                            <button class="mdc-button" style="box-shadow:1px 0px 1px #fff;" onclick="saveSettings()">
+                            <button class="mdc-button" onclick="saveSettings()">
                                 <i class="material-icons">save</i>
                                 Save Changes
                             </button>
@@ -2366,8 +2342,6 @@
     <audio id="radioAudio" crossorigin="anonymous"></audio>
 
     <!-- Scripts -->
-
-
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
 
@@ -2386,7 +2360,7 @@
             progressBar.style.width = '100%';
             
             // Type the motto character by character
-            const motto = ".....";
+            const motto = "God Is Great";
             let charIndex = 0;
             
             function typeMotto() {
@@ -3793,16 +3767,13 @@
                         
                         return `
                             <div class="podcast-item" onclick="playPodcast(${podcast.id})">
-                                <img src="${podcast.image}" alt="${podcast.title}" loading="lazy" style="height:100%; width:100%;" onerror="this.src='https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80'">
+                                <img src="${podcast.image}" alt="${podcast.title}" loading="lazy" onerror="this.src='https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80'">
                                 <div class="podcast-meta">
                                     <span><i class="material-icons">calendar_today</i> ${date}</span>
                                     ${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}
                                 </div>
                                 <h3>${podcast.title}</h3>
-                                <p style="  word-break: break-all;
-  word-wrap: break-word;
-  max-width: 18em; font-size:14px;
- ">${podcast.description}</p>
+                                <p>${podcast.description}</p>
                                 <div class="card-actions">
                                     <button class="mdc-button">
                                         <i class="material-icons">play_arrow</i>
@@ -4186,6 +4157,5 @@
         // Start the loading screen when page loads
         document.addEventListener('DOMContentLoaded', initLoadingScreen);
     </script>
-    
 </body>
 </html>
