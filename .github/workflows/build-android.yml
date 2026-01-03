@@ -7,22 +7,25 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '17'
-        
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        
+
     - name: Install Cordova and setup
       run: |
         npm install -g cordova
@@ -32,24 +35,27 @@ jobs:
         cordova plugin remove cordova-plugin-whitelist --force || true
         cordova plugin add cordova-plugin-media
         cordova plugin add cordova-plugin-network-information
-        
-    - name: Build Android AAB
+
+    - name: Decode keystore from secret
       run: |
-        cordova build android --release -- --packageType=bundle
-        
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
+
+    - name: Build Android AAB (Release - Signed)
+      run: |
+        cordova build android --release -- --packageType=bundle --buildConfig build.json
+
     - name: Build Android APK (Debug - for testing)
       run: |
         cordova build android --debug
-        
+
     - name: Upload AAB artifact
       uses: actions/upload-artifact@v4
       with:
         name: kls-radio-app-aab
         path: platforms/android/app/build/outputs/bundle/release/*.aab
-        
+
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: kls-radio-app-apk
         path: platforms/android/app/build/outputs/apk/debug/*.apk
-
