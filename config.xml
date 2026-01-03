@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <widget
     id="com.kingdomlifestyleradio.klsradio"
-    version="8.0.2"
+    version="12.0.0"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:cdv="http://cordova.apache.org/ns/1.0">
 
@@ -27,7 +27,7 @@
     <platform name="android">
 
         <!-- 🔑 CRITICAL: MUST ALWAYS INCREASE -->
-        <preference name="versionCode" value="802" />
+        <preference name="versionCode" value="1200" />
 
         <!-- Target Android 13+ safely -->
         <preference name="AndroidInsecureFileModeEnabled" value="true" />
