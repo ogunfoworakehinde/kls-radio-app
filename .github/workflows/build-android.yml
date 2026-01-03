@@ -31,7 +31,7 @@ jobs:
         npm install -g cordova
         npm install
         cordova platform remove android --save
-        cordova platform add android@13.0.0
+        cordova platform add android@14.1.0
         cordova plugin remove cordova-plugin-whitelist --force || true
         cordova plugin add cordova-plugin-media
         cordova plugin add cordova-plugin-network-information
