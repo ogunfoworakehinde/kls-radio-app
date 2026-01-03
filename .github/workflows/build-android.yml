@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     env:
       KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
@@ -20,21 +21,35 @@ jobs:
       with:
         distribution: 'temurin'
         java-version: '17'
+        cache: gradle
 
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
+        cache: npm
 
-    - name: Install Cordova and setup
+    - name: Install Cordova
       run: |
-        npm install -g cordova
+        npm install -g cordova@12
         npm install
-        cordova platform remove android --save
-        cordova platform add android@14.0.0 --save
+
+    - name: Clean previous Android build
+      run: |
+        rm -rf platforms plugins
+        cordova platform remove android --save || true
+
+    - name: Add Android platform
+      run: |
+        cordova platform add android@13.0.0 --save
+
+    - name: Manage Cordova plugins
+      run: |
         cordova plugin remove cordova-plugin-whitelist --force || true
-        cordova plugin add cordova-plugin-media
+        cordova plugin remove cordova-plugin-media --force || true
         cordova plugin add cordova-plugin-network-information
+        cordova plugin add cordova-plugin-splashscreen
+        cordova plugin add cordova-plugin-statusbar
 
     - name: Decode keystore from secret
       run: |
