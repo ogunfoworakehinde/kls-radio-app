@@ -2,11 +2,10 @@
 <widget
     id="com.kingdomlifestyleradio.klsradio"
     version="12.0.0"
-    android-versionCode="1200"
     xmlns="http://www.w3.org/ns/widgets"
-    xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    xmlns:cdv="http://cordova.apache.org/ns/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- App Info -->
     <name>KLS Radio</name>
     <description>KLS Radio Streaming App</description>
 
@@ -16,31 +15,24 @@
         Kingdom Lifestyle Radio
     </author>
 
-    <!-- Entry Point -->
     <content src="index.html" />
 
-    <!-- App Icon -->
+    <!-- App icon -->
     <icon src="www/images/icon.png" />
 
     <!-- Navigation / Access -->
     <allow-navigation href="*" />
     <access origin="*" />
 
-    <!-- Android Platform Config -->
+    <!-- Permissions -->
     <platform name="android">
-
-        <!-- 🔑 Version Code must increase for each new release -->
-        <preference name="versionCode" value="1200" />
-
-        <!-- Allow intents for Play Store -->
         <allow-intent href="market:*" />
-
-        <!-- Required for Android 13+ file access changes -->
+        <preference name="versionCode" value="1200" />
         <preference name="AndroidInsecureFileModeEnabled" value="true" />
 
-        <!-- Advertising ID permission (if using ads / analytics) -->
-        <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
-
+        <!-- Example of correctly using android:name -->
+        <uses-permission android:name="android.permission.INTERNET" />
+        <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     </platform>
 
 </widget>
