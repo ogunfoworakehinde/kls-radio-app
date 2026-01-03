@@ -1,28 +1,39 @@
-<?xml version='1.0' encoding='utf-8'?>
-<widget id="com.kingdomlifestyleradio.klsradio"
-        version="8.0.1"
-        xmlns="http://www.w3.org/ns/widgets"
-        xmlns:cdv="http://cordova.apache.org/ns/1.0">
+<?xml version="1.0" encoding="utf-8"?>
+<widget
+    id="com.kingdomlifestyleradio.klsradio"
+    version="8.0.2"
+    xmlns="http://www.w3.org/ns/widgets"
+    xmlns:cdv="http://cordova.apache.org/ns/1.0">
 
     <name>KLS Radio</name>
     <description>KLS Radio Streaming App</description>
 
-    <author email="dev@deloganwebsolution.com" href="https://kingdomlifestyleradio.com">
+    <author
+        email="dev@deloganwebsolution.com"
+        href="https://kingdomlifestyleradio.com">
         Kingdom Lifestyle Radio
     </author>
 
     <content src="index.html" />
+
+    <!-- App icon -->
     <icon src="www/images/icon.png" />
 
+    <!-- Navigation / Access -->
     <allow-navigation href="*" />
     <access origin="*" />
 
+    <!-- ANDROID CONFIG -->
     <platform name="android">
-        <!-- THIS LINE WAS MISSING -->
-        <preference name="versionCode" value="801" />
+
+        <!-- 🔑 CRITICAL: MUST ALWAYS INCREASE -->
+        <preference name="versionCode" value="802" />
+
+        <!-- Target Android 13+ safely -->
+        <preference name="AndroidInsecureFileModeEnabled" value="true" />
 
         <allow-intent href="market:*" />
-        <preference name="AndroidInsecureFileModeEnabled" value="true" />
+
     </platform>
 
 </widget>
