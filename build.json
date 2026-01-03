@@ -2,10 +2,10 @@
   "android": {
     "release": {
       "keystore": "klsradio-release.keystore",
-      "storePassword": "$KEYSTORE_PASSWORD",
+      "storePassword": "www.klsr.com",
       "alias": "klsradio_release",
-      "password": "$KEY_PASSWORD",
-      "keystoreType": ""
+      "password": "www.klsr.com",
+      "keystoreType": "JKS"
     }
   }
 }
