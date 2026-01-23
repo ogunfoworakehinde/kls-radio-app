@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <widget
     id="com.kingdomlifestyleradio.klsradio"
-    version="12.0.4"
+    version="12.0.5"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:cdv="http://cordova.apache.org/ns/1.0"
     xmlns:android="http://schemas.android.com/apk/res/android">
@@ -30,7 +30,7 @@
         <allow-intent href="market:*" />
 
         <!-- Versioning -->
-        <preference name="versionCode" value="1204" />
+        <preference name="versionCode" value="1205" />
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="35" />
         <preference name="android-compileSdkVersion" value="35" />
