@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <widget
     id="com.kingdomlifestyleradio.klsradio"
-    version="12.0.5"
+    version="12.0.6"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:cdv="http://cordova.apache.org/ns/1.0"
     xmlns:android="http://schemas.android.com/apk/res/android">
 
     <name>KLS Radio</name>
-    <description>KLS Radio Streaming App</description>
+    <description>Kingdom Lifestyle Radio Streaming App</description>
 
     <author
-        email="dev@deloganwebsolution.com"
+        email="support@kingdomlifestyleradio.com"
         href="https://kingdomlifestyleradio.com">
         Kingdom Lifestyle Radio
     </author>
@@ -23,28 +23,86 @@
     <!-- Navigation / Access -->
     <allow-navigation href="*" />
     <access origin="*" />
+    <allow-intent href="https://*/*" />
+    <allow-intent href="http://*/*" />
+
+    <!-- CRITICAL FOR BACKGROUND AUDIO -->
+    <preference name="KeepRunning" value="true" />
+    <preference name="BackgroundColor" value="0xff0a0f2d" />
+    <preference name="orientation" value="portrait" />
+    
+    <!-- For iOS compatibility (if you add iOS later) -->
+    <preference name="DisallowOverscroll" value="true" />
+    <preference name="android-minSdkVersion" value="24" />
+    <preference name="android-targetSdkVersion" value="35" />
+    <preference name="android-compileSdkVersion" value="35" />
+
+    <!-- Splash Screen Settings -->
+    <preference name="SplashScreen" value="screen" />
+    <preference name="SplashScreenDelay" value="3000" />
+    <preference name="AutoHideSplashScreen" value="true" />
+    <preference name="ShowSplashScreenSpinner" value="false" />
+    <preference name="SplashMaintainAspectRatio" value="true" />
+    <preference name="FadeSplashScreen" value="true" />
+    <preference name="FadeSplashScreenDuration" value="300" />
+    <preference name="SplashShowOnlyFirstTime" value="false" />
+    
+    <!-- DEEP BLUE SPLASH SCREEN -->
+    <preference name="AndroidWindowSplashScreenBackground" value="#0a0f2d" />
+    <preference name="AndroidWindowSplashScreenAnimatedIcon" value="screen" />
+    
+    <!-- Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://*.voscast.com https://stream.zeno.fm https://kingdomlifestyleradio.com https://*.wp.com https://*.unsplash.com https://fonts.googleapis.com https://*.gstatic.com 'unsafe-inline' 'unsafe-eval'; media-src * blob: data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src * data: blob:; connect-src *">
 
     <!-- ANDROID CONFIG -->
     <platform name="android">
-
         <allow-intent href="market:*" />
 
         <!-- Versioning -->
-        <preference name="versionCode" value="1205" />
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="35" />
         <preference name="android-compileSdkVersion" value="35" />
+        <preference name="versionCode" value="1206" />
 
-        <!-- Permissions -->
-        <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
+        <!-- Permissions for Background Audio -->
+        <config-file parent="/manifest" target="AndroidManifest.xml">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-        </edit-config>
+            <uses-permission android:name="android.permission.WAKE_LOCK" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+        </config-file>
 
         <!-- Android icon -->
         <icon src="www/images/icon.png" density="mdpi" />
+        <icon src="www/images/icon.png" density="hdpi" />
+        <icon src="www/images/icon.png" density="xhdpi" />
+        <icon src="www/images/icon.png" density="xxhdpi" />
+        <icon src="www/images/icon.png" density="xxxhdpi" />
 
+        <!-- Splash screen for Android -->
+        <splash src="www/images/splash.png" density="port-ldpi" />
+        <splash src="www/images/splash.png" density="port-mdpi" />
+        <splash src="www/images/splash.png" density="port-hdpi" />
+        <splash src="www/images/splash.png" density="port-xhdpi" />
+        <splash src="www/images/splash.png" density="port-xxhdpi" />
+        <splash src="www/images/splash.png" density="port-xxxhdpi" />
+
+        <!-- Foreground Service for Android 8+ (Required for background audio) -->
+        <config-file parent="/manifest/application" target="AndroidManifest.xml">
+            <service
+                android:name="org.apache.cordova.media.AudioHandler$AudioService"
+                android:exported="false" />
+                
+            <meta-data
+                android:name="android.allow_foreground_service_media_playback"
+                android:value="true" />
+        </config-file>
+
+        <!-- Android 12+ specific -->
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
+            <application android:usesCleartextTraffic="true" />
+        </edit-config>
     </platform>
 
 </widget>
-
