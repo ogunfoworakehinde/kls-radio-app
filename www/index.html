@@ -36,6 +36,8 @@
     <!-- AOS CSS -->
     <link rel="stylesheet" href="https://unpkg.com/aos@2.3.1/dist/aos.css">
 
+<script src="js/background-audio.js"></script>
+     
     <style>
         /* Loading Screen Styles - WHITE TEXT, NO WHITE BACKGROUND */
         .loading-screen {
@@ -2351,7 +2353,115 @@
 
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
+<script>
+// Wait for Cordova to load
+document.addEventListener('deviceready', function() {
+    console.log('Cordova is ready!');
+    // Your existing initialization code here
+}, false);
 
+// Modify your radio functions to use background audio
+function playRadio() {
+    const station = appState.stations[appState.currentStation];
+    
+    // Check if we're in Cordova environment
+    if (window.cordova && window.BackgroundAudio) {
+        console.log('Using Cordova background audio');
+        
+        const success = window.BackgroundAudio.play(station.url);
+        
+        if (success) {
+            appState.radioPlaying = true;
+            elements.playPauseIcon.textContent = 'pause';
+            showAlert(`Now playing: ${station.name} (Background)`);
+            
+            // Also update HTML5 audio for web fallback
+            elements.radioAudio.src = station.url;
+            elements.radioAudio.load();
+        } else {
+            // Fallback to HTML5
+            playWithHTML5(station);
+        }
+    } else {
+        // Web browser fallback
+        playWithHTML5(station);
+    }
+}
+
+function playWithHTML5(station) {
+    appState.radioAutoStarted = false;
+    appState.radioShouldPlay = true;
+    
+    elements.radioAudio.src = station.url;
+    elements.radioAudio.load();
+    
+    elements.radioAudio.play()
+        .then(() => {
+            appState.radioPlaying = true;
+            elements.playPauseIcon.textContent = 'pause';
+            console.log('Radio playback started (HTML5 fallback)');
+            showAlert(`Now playing: ${station.name}`);
+        })
+        .catch(error => {
+            console.log('Radio: Initial play failed, silent retry...');
+            
+            if (appState.radioShouldPlay) {
+                setTimeout(() => {
+                    elements.radioAudio.play().catch(e => {
+                        console.log('Radio: Retry failed');
+                    });
+                }, 1000);
+            }
+        });
+}
+
+function pauseRadio() {
+    // Try Cordova background audio first
+    if (window.cordova && window.BackgroundAudio && window.BackgroundAudio.isPlaying()) {
+        window.BackgroundAudio.pause();
+        appState.radioPlaying = false;
+        elements.playPauseIcon.textContent = 'play_arrow';
+        console.log('Paused via Cordova background audio');
+        return;
+    }
+    
+    // Fallback to HTML5 audio
+    appState.radioShouldPlay = false;
+    elements.radioAudio.pause();
+    appState.radioPlaying = false;
+    elements.playPauseIcon.textContent = 'play_arrow';
+    console.log('Radio paused by user');
+    
+    // Stop buffer monitor if exists
+    if (typeof stopBufferMonitor === 'function') {
+        stopBufferMonitor();
+    }
+}
+
+function stopRadio() {
+    // Try Cordova background audio first
+    if (window.cordova && window.BackgroundAudio) {
+        window.BackgroundAudio.stop();
+    }
+    
+    // HTML5 audio
+    appState.radioShouldPlay = false;
+    elements.radioAudio.pause();
+    elements.radioAudio.currentTime = 0;
+    appState.radioPlaying = false;
+    elements.playPauseIcon.textContent = 'play_arrow';
+    
+    console.log('Radio stopped');
+}
+     
+</script>
+
+     
+
+
+
+
+     
   <script>
     // Loading Screen Functionality
     function initLoadingScreen() {
