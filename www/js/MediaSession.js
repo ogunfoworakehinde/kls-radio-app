@@ -1,39 +1,33 @@
-// Media Session API for lock-screen & Android Auto
-document.addEventListener('deviceready', () => {
-    if (!window.MediaSession) return;
+function updateMediaSession(state) {
+    if (!('mediaSession' in navigator)) return;
 
-    MediaSession.configure({
-        metadata: {
-            title: 'KLS Radio',
-            artist: 'Kingdom Lifestyle Radio',
-            album: 'Live Stream',
-            artwork: [{ src: 'www/images/icon.png', sizes: '512x512', type: 'image/png' }]
-        },
-        actions: [
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'KLS Radio',
+        artist: 'Kingdom Lifestyle Radio',
+        album: 'Live Gospel Stream',
+        artwork: [
             {
-                action: 'play',
-                callback: () => BackgroundAudio.play(BackgroundAudio.getCurrentUrl())
-            },
-            {
-                action: 'pause',
-                callback: () => BackgroundAudio.pause()
-            },
-            {
-                action: 'stop',
-                callback: () => BackgroundAudio.stop()
-            },
-            {
-                action: 'nexttrack',
-                callback: () => {
-                    // Optional: Implement next track logic
-                }
-            },
-            {
-                action: 'previoustrack',
-                callback: () => {
-                    // Optional: Implement previous track logic
-                }
+                src: 'images/icon.png',
+                sizes: '512x512',
+                type: 'image/png'
             }
         ]
     });
-});
+
+    navigator.mediaSession.setActionHandler('play', () => {
+        BackgroundAudio.play(BackgroundAudio.getCurrentUrl());
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+        BackgroundAudio.pause();
+    });
+
+    navigator.mediaSession.setActionHandler('stop', () => {
+        BackgroundAudio.stop();
+    });
+
+    navigator.mediaSession.setActionHandler('previoustrack', () => {});
+    navigator.mediaSession.setActionHandler('nexttrack', () => {});
+
+    navigator.mediaSession.playbackState = state;
+}
