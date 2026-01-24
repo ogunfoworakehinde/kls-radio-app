@@ -3,123 +3,69 @@ name: Build Android APK and AAB
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
 
-    steps:
-    # ------------------------------------
-    # Checkout
-    # ------------------------------------
-    - uses: actions/checkout@v4
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-    # ------------------------------------
-    # Java
-    # ------------------------------------
-    - uses: actions/setup-java@v4
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: '17'
 
-    # ------------------------------------
-    # Node
-    # ------------------------------------
-    - uses: actions/setup-node@v4
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    # ------------------------------------
-    # Install Cordova
-    # ------------------------------------
-    - name: Install Cordova
-      run: npm install -g cordova@12.0.0
-
-    # ------------------------------------
-    # Validate source app
-    # ------------------------------------
-    - name: Validate source files
+    - name: Install Cordova and dependencies
       run: |
-        test -d www || (echo "❌ www folder missing" && exit 1)
-        test -f config.xml || (echo "❌ config.xml missing" && exit 1)
-        echo "✅ Source files OK"
+        npm install -g cordova@12.0.0
+        npm install
 
-    # ------------------------------------
-    # Create Cordova project (CLEAN)
-    # ------------------------------------
-    - name: Create Cordova project
+    # ❗ DO NOT remove platforms blindly
+    - name: Ensure Android platform exists
       run: |
-        rm -rf cordova
-        cordova create cordova com.klsr.radio "KLS Radio"
-
-        # Replace Cordova www with your app
-        rm -rf cordova/www/*
-        cp -R www/* cordova/www/
-
-        # Use your config.xml
-        cp config.xml cordova/
-
-        # Copy network security config if used
-        cp network_security_config.xml cordova/ || true
-
-    # ------------------------------------
-    # VERIFY Cordova project (IMPORTANT)
-    # ------------------------------------
-    - name: Verify Cordova project
-      run: |
-        test -d cordova/.cordova || (echo "❌ Cordova project not created" && exit 1)
-        test -d cordova/www || exit 1
-        test -f cordova/config.xml || exit 1
-        echo "✅ Cordova project verified"
-
-    # ------------------------------------
-    # Add Android platform
-    # ------------------------------------
-    - name: Add Android platform
-      working-directory: cordova
-      run: |
-        cordova platform add android@13.0.0
         cordova platform ls
+        cordova platform add android@13.0.0 --save || true
 
-    # ------------------------------------
-    # Install required plugins
-    # ------------------------------------
-    - name: Install plugins
-      working-directory: cordova
+    - name: Ensure required plugins
       run: |
-        cordova plugin add cordova-plugin-device
         cordova plugin add cordova-plugin-network-information
-        cordova plugin add cordova-plugin-file
-        cordova plugin add cordova-plugin-media@5.0.3
-        cordova plugin add cordova-plugin-background-mode
         cordova plugin add cordova-plugin-splashscreen
         cordova plugin add cordova-plugin-statusbar
+        cordova plugin add cordova-plugin-media@5.0.3
+        cordova plugin add cordova-plugin-background-mode
 
-    # ------------------------------------
-    # Build Debug APK
-    # ------------------------------------
-    - name: Build Debug APK
-      working-directory: cordova
-      run: cordova build android --debug
+    - name: Decode keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
 
-    # ------------------------------------
-    # Build Release AAB
-    # ------------------------------------
-    - name: Build Release AAB
-      working-directory: cordova
-      run: cordova build android --release -- --packageType=bundle
+    - name: Build Android AAB (Release)
+      run: |
+        cordova build android --release -- --packageType=bundle --buildConfig build.json
 
-    # ------------------------------------
-    # Upload artifacts
-    # ------------------------------------
-    - uses: actions/upload-artifact@v4
+    - name: Build Android APK (Debug)
+      run: |
+        cordova build android --debug
+
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
       with:
-        name: debug-apk
-        path: cordova/platforms/android/app/build/outputs/apk/debug/*.apk
+        name: kls-radio-release-aab
+        path: platforms/android/app/build/outputs/bundle/release/*.aab
 
-    - uses: actions/upload-artifact@v4
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
       with:
-        name: release-aab
-        path: cordova/platforms/android/app/build/outputs/bundle/release/*.aab
+        name: kls-radio-debug-apk
+        path: platforms/android/app/build/outputs/apk/debug/*.apk
