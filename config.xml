@@ -3,7 +3,8 @@
     id="com.kingdomlifestyleradio.klsradio"
     version="12.0.6"
     xmlns="http://www.w3.org/ns/widgets"
-    xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    xmlns:cdv="http://cordova.apache.org/ns/1.0"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 
     <name>KLS Radio</name>
     <description>KLS Radio Streaming App</description>
@@ -29,6 +30,9 @@
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="StatusBarBackgroundColor" value="#0a0f2d" />
 
+    <!-- Keep audio playing in background -->
+    <preference name="KeepRunning" value="true" />
+
     <!-- Android Platform -->
     <platform name="android">
 
@@ -37,6 +41,7 @@
         <preference name="android-compileSdkVersion" value="35" />
         <preference name="versionCode" value="1206" />
 
+        <!-- Application settings -->
         <edit-config file="AndroidManifest.xml"
                      target="/manifest/application"
                      mode="merge">
@@ -46,6 +51,7 @@
                 android:theme="@style/Theme.AppCompat.NoActionBar" />
         </edit-config>
 
+        <!-- Permissions -->
         <edit-config file="AndroidManifest.xml"
                      target="/manifest"
                      mode="merge">
