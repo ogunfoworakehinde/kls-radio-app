@@ -1,146 +1,97 @@
-document.addEventListener('deviceready', initPlayer, false);
+// Background Audio Service for Cordova Android App
 
 let media = null;
-let currentIndex = null;
-let reconnectTimer = null;
-let playing = false;
+let isPlaying = false;
+let currentStreamUrl = '';
 
-const STATIONS = [
-    {
-        name: "English Gospel",
-        url: "https://s3.voscast.com:9425/stream",
-        description: "24/7 English Gospel Music"
-    },
-    {
-        name: "Yoruba Gospel",
-        url: "https://s3.voscast.com:10745/stream",
-        description: "Yoruba Language Worship"
-    },
-    {
-        name: "Praise Worship",
-        url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
-        description: "Contemporary Praise"
-    }
-];
+document.addEventListener('deviceready', () => {
+    console.log('Cordova device ready for background audio');
 
-function initPlayer() {
-    console.log("KLS Radio ready");
-
-    // Keep CPU awake
-    if (window.powerManagement) {
-        powerManagement.acquire();
-    }
-
-    // Background notification
+    // Enable background mode
     if (cordova.plugins.backgroundMode) {
+        cordova.plugins.backgroundMode.enable();
         cordova.plugins.backgroundMode.setDefaults({
             title: 'KLS Radio',
-            text: 'Ready',
+            text: 'Playing Kingdom Lifestyle Radio',
+            icon: 'icon',
+            color: '0a0f2d',
+            resume: true,
+            hidden: false,
+            bigText: true,
+            channelName: 'KLS Radio Player',
+            channelDescription: 'Background audio playback',
+            importance: 4,
+            allowClose: false,
             silent: false
         });
+
+        cordova.plugins.backgroundMode.on('activate', () => {
+            cordova.plugins.backgroundMode.disableWebViewOptimizations();
+            cordova.plugins.backgroundMode.disableBatteryOptimizations();
+        });
     }
+}, false);
 
-    // Media Session buttons
-    if (window.MediaSession) {
-        MediaSession.setActionHandler('play', () => resume());
-        MediaSession.setActionHandler('pause', () => pause());
-        MediaSession.setActionHandler('nexttrack', () => next());
-        MediaSession.setActionHandler('previoustrack', () => previous());
+function initBackgroundAudio(streamUrl) {
+    currentStreamUrl = streamUrl;
+
+    if (!window.Media) {
+        console.error('Media plugin not available');
+        return;
     }
-}
-
-function play(index) {
-    stop();
-
-    const station = STATIONS[index];
-    if (!station) return;
-
-    currentIndex = index;
 
     media = new Media(
-        station.url,
-        () => console.log("Stream ended"),
-        err => retry(err)
+        streamUrl,
+        () => console.log('Playback finished'),
+        (err) => {
+            console.error('Playback error', err);
+            // Auto-reconnect after 3s if still supposed to be playing
+            if (isPlaying) setTimeout(() => playBackgroundAudio(streamUrl), 3000);
+        },
+        (status) => console.log('Media status', status)
     );
 
-    media.play();
-    playing = true;
-
-    cordova.plugins.backgroundMode.enable();
-    updateNotification(station);
-    updateMediaSession(station);
+    media.setVolume?.('1.0');
 }
 
-function resume() {
-    if (media && !playing) {
+function playBackgroundAudio(streamUrl) {
+    if (!media || currentStreamUrl !== streamUrl) initBackgroundAudio(streamUrl);
+    if (media) {
         media.play();
-        playing = true;
+        isPlaying = true;
+        if (cordova.plugins.backgroundMode) {
+            cordova.plugins.backgroundMode.configure({
+                text: 'Playing: Kingdom Lifestyle Radio',
+                ticker: 'KLS Radio is playing'
+            });
+        }
     }
 }
 
-function pause() {
-    if (!media) return;
-    media.pause();
-    playing = false;
+function pauseBackgroundAudio() {
+    if (media && isPlaying) {
+        media.pause();
+        isPlaying = false;
+        if (cordova.plugins.backgroundMode)
+            cordova.plugins.backgroundMode.configure({ text: 'KLS Radio - Paused' });
+    }
 }
 
-function stop() {
+function stopBackgroundAudio() {
     if (media) {
         media.stop();
         media.release();
         media = null;
+        isPlaying = false;
+        currentStreamUrl = '';
+        cordova.plugins.backgroundMode?.disable();
     }
-    playing = false;
-    cordova.plugins.backgroundMode.disable();
 }
 
-function next() {
-    let nextIndex = (currentIndex + 1) % STATIONS.length;
-    play(nextIndex);
-}
-
-function previous() {
-    let prevIndex = (currentIndex - 1 + STATIONS.length) % STATIONS.length;
-    play(prevIndex);
-}
-
-function retry(error) {
-    console.log("Stream error:", error);
-    if (!playing) return;
-
-    clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(() => {
-        play(currentIndex);
-    }, 3000);
-}
-
-function updateNotification(station) {
-    cordova.plugins.backgroundMode.configure({
-        title: station.name,
-        text: station.description
-    });
-}
-
-function updateMediaSession(station) {
-    if (!window.MediaSession) return;
-
-    MediaSession.setMetadata({
-        title: station.name,
-        artist: "Kingdom Lifestyle Radio",
-        album: station.description,
-        artwork: [
-            { src: "www/images/icon.png", sizes: "512x512", type: "image/png" }
-        ]
-    });
-
-    MediaSession.setPlaybackState(playing ? 'playing' : 'paused');
-}
-
-window.KLSRadio = {
-    play,
-    pause,
-    stop,
-    next,
-    previous,
-    stations: STATIONS
+window.BackgroundAudio = {
+    play: playBackgroundAudio,
+    pause: pauseBackgroundAudio,
+    stop: stopBackgroundAudio,
+    isPlaying: () => isPlaying,
+    getCurrentUrl: () => currentStreamUrl
 };
