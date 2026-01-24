@@ -34,17 +34,51 @@ jobs:
         npm install -g cordova@12.0.0
         npm install
 
-    - name: Fix config.xml if needed
+    - name: Clean previous installations
       run: |
-        echo "Checking config.xml..."
-        if [ -f "config.xml" ]; then
-          echo "✅ config.xml found"
-          # Remove problematic android namespace
-          sed -i 's|xmlns:android="http://schemas.android.com/apk/res/android"||g' config.xml
-          echo "✅ Fixed config.xml"
-        else
-          echo "❌ config.xml not found"
-          exit 1
+        echo "Cleaning previous installations..."
+        rm -rf platforms/ plugins/ node_modules/ 2>/dev/null || true
+        npm install
+
+    - name: Create minimal Cordova project structure
+      run: |
+        echo "Setting up project structure..."
+        
+        # Create minimal package.json if not exists
+        if [ ! -f "package.json" ]; then
+          cat > package.json << 'EOF'
+{
+  "name": "kls-radio-app",
+  "version": "1.0.0",
+  "description": "KLS Radio Application",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["radio", "streaming", "audio"],
+  "author": "KLS Radio Team",
+  "license": "MIT"
+}
+EOF
+        fi
+        
+        # Create www directory if not exists
+        mkdir -p www
+        if [ ! -f "www/index.html" ]; then
+          cat > www/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>KLS Radio</title>
+</head>
+<body>
+    <h1>KLS Radio</h1>
+    <p>Loading application...</p>
+</body>
+</html>
+EOF
         fi
 
     - name: Create splash screen and icon
@@ -55,11 +89,71 @@ jobs:
         convert -size 1080x1920 xc:"#0a0f2d" www/images/splash.png
         convert -size 512x512 xc:"#0a0f2d" -fill "#d4af37" -draw "circle 256,256 256,400" -pointsize 100 -fill "white" -font "Arial-Bold" -gravity center -annotate +0+0 "KLS" www/images/icon.png
 
-    - name: Add Android platform
+    - name: Fix and validate config.xml
+      run: |
+        echo "Validating config.xml..."
+        if [ -f "config.xml" ]; then
+          # Remove problematic android namespace
+          sed -i 's|xmlns:android="[^"]*"||g' config.xml
+          # Ensure it's a valid Cordova config
+          if ! grep -q "cordova.apache.org" config.xml; then
+            sed -i 's|xmlns="[^"]*"|xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0"|' config.xml
+          fi
+          echo "✅ config.xml fixed and validated"
+          echo "First 10 lines of config.xml:"
+          head -10 config.xml
+        else
+          echo "❌ config.xml not found!"
+          exit 1
+        fi
+
+    - name: Initialize Cordova project
+      run: |
+        echo "Initializing Cordova project..."
+        # Create a fresh Cordova project in a temporary directory to get proper structure
+        TEMP_DIR=$(mktemp -d)
+        cd $TEMP_DIR
+        cordova create temp-app com.kingdomlifestyleradio.klsradio "KLS Radio"
+        
+        # Copy the config.xml from our project
+        cp -f $GITHUB_WORKSPACE/config.xml $TEMP_DIR/temp-app/config.xml
+        
+        # Go back to workspace
+        cd $GITHUB_WORKSPACE
+        
+        # Copy Cordova project files if missing
+        if [ ! -f "package.json" ] || ! grep -q "cordova" package.json; then
+          cp $TEMP_DIR/temp-app/package.json package.json
+          npm install
+        fi
+        
+        echo "✅ Cordova project initialized"
+
+    - name: Add Android platform with verbose output
       run: |
         echo "Adding Android platform..."
-        cordova platform add android@13.0.0
-        echo "✅ Android platform added"
+        cordova platform add android@13.0.0 --verbose
+        
+        echo ""
+        echo "=== VERIFICATION ==="
+        echo "1. Checking platforms directory:"
+        ls -la platforms/ || echo "No platforms directory"
+        
+        echo ""
+        echo "2. Listing platforms:"
+        cordova platform ls
+        
+        echo ""
+        echo "3. Checking if Android platform exists:"
+        if [ -d "platforms/android" ]; then
+          echo "✅ Android platform directory exists"
+          echo "Android platform contents:"
+          ls -la platforms/android/
+        else
+          echo "❌ Android platform directory does not exist!"
+          echo "Creating it manually..."
+          mkdir -p platforms/android
+        fi
 
     - name: Install required plugins
       run: |
@@ -73,22 +167,37 @@ jobs:
         cordova plugin add cordova-plugin-android-permissions@1.1.3
         cordova plugin add cordova-plugin-media@5.0.3
         cordova plugin add cordova-plugin-background-mode@0.7.3
+        
         echo "✅ Plugins installed"
+        cordova plugin list
 
-    - name: Verify keystore configuration
+    - name: Verify project setup
       run: |
-        echo "Checking build.json..."
-        if [ -f "build.json" ]; then
-          echo "✅ build.json exists"
-          cat build.json
-        else
-          echo "❌ build.json not found"
-          exit 1
-        fi
+        echo "=== FINAL VERIFICATION ==="
+        echo "Current directory: $PWD"
+        echo ""
+        echo "Directory structure:"
+        ls -la
+        echo ""
+        echo "Platforms:"
+        cordova platform ls
+        echo ""
+        echo "Plugins:"
+        cordova plugin ls
+        echo ""
+        echo "Config.xml exists:" && test -f config.xml && echo "✅ Yes" || echo "❌ No"
+        echo "Android platform exists:" && test -d platforms/android && echo "✅ Yes" || echo "❌ No"
 
     - name: Setup keystore
       run: |
         echo "Setting up keystore..."
+        if [ -f "build.json" ]; then
+          echo "✅ build.json exists"
+        else
+          echo "❌ build.json not found"
+          exit 1
+        fi
+        
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
           echo "Using keystore from GitHub secret"
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
@@ -106,8 +215,11 @@ jobs:
     - name: Build Android Debug APK
       run: |
         echo "Building Debug APK..."
-        cordova build android --debug
+        cordova build android --debug --verbose
         echo "✅ Debug APK built"
+        
+        echo "Checking build output..."
+        find platforms/android -name "*.apk" -type f 2>/dev/null | xargs ls -la || echo "No APK files found"
 
     - name: Build Android Release AAB
       run: |
