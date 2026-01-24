@@ -31,73 +31,24 @@ jobs:
 
     - name: Install dependencies
       run: |
-        echo "📦 Installing dependencies..."
         npm install -g cordova@12.0.0
         npm install
 
     - name: Create splash screen and icon
       run: |
-        echo "🎨 Creating splash screen and icons..."
-        sudo apt-get update -q
-        sudo apt-get install -y -q imagemagick
-        
+        sudo apt-get update
+        sudo apt-get install -y imagemagick
         mkdir -p www/images
-        
-        # Create deep blue splash screen (#0a0f2d)
         convert -size 1080x1920 xc:"#0a0f2d" www/images/splash.png
-        
-        # Create app icon
-        convert -size 512x512 xc:"#0a0f2d" \
-          -fill "#d4af37" -draw "circle 256,256 256,400" \
-          -pointsize 100 -fill "white" -font "Arial-Bold" \
-          -gravity center -annotate +0+0 "KLS" \
-          www/images/icon.png
-        
-        echo "✅ Created splash screen and icons"
-
-    - name: Verify project structure
-      run: |
-        echo "📁 Checking project structure..."
-        ls -la
-        echo "--- www directory ---"
-        ls -la www/ || echo "www directory not found"
-        echo "--- package.json ---"
-        cat package.json || echo "package.json not found"
-
-    - name: Initialize Cordova project if needed
-      run: |
-        echo "🔄 Initializing Cordova project..."
-        if [ ! -f "config.xml" ]; then
-          echo "⚠️ config.xml not found. Creating Cordova project..."
-          cordova create . com.kls.radio "KLS Radio" --template cordova-template-default
-          echo "✅ Cordova project initialized"
-        else
-          echo "✅ Cordova project already exists"
-        fi
+        convert -size 512x512 xc:"#0a0f2d" -fill "#d4af37" -draw "circle 256,256 256,400" -pointsize 100 -fill "white" -font "Arial-Bold" -gravity center -annotate +0+0 "KLS" www/images/icon.png
 
     - name: Add Android platform
       run: |
-        echo "🤖 Adding Android platform..."
-        # Remove existing android platform if exists
         cordova platform rm android --save 2>/dev/null || true
-        
-        # Add Android platform with specific version
         cordova platform add android@13.0.0 --save
-        
-        # Verify platform was added
-        cordova platforms ls
-        echo "✅ Android platform added"
 
     - name: Install Cordova plugins
       run: |
-        echo "🔌 Installing Cordova plugins..."
-        
-        # Remove existing plugins
-        cordova plugin rm cordova-plugin-whitelist --force 2>/dev/null || true
-        cordova plugin rm cordova-plugin-media --force 2>/dev/null || true
-        cordova plugin rm cordova-plugin-background-mode --force 2>/dev/null || true
-        
-        # Install plugins
         cordova plugin add cordova-plugin-whitelist@1.3.4
         cordova plugin add cordova-plugin-network-information@3.0.0
         cordova plugin add cordova-plugin-splashscreen@6.0.1
@@ -107,116 +58,59 @@ jobs:
         cordova plugin add cordova-plugin-android-permissions@1.1.3
         cordova plugin add cordova-plugin-media@5.0.3
         cordova plugin add cordova-plugin-background-mode@0.7.3
-        
-        echo "✅ All plugins installed"
-        cordova plugin list
 
-    - name: Verify build configuration
+    - name: Verify existing files
       run: |
-        echo "⚙️ Verifying build configuration..."
-        
-        if [ -f build.json ]; then
-          echo "✅ build.json found"
-          echo "Contents:"
+        echo "Checking existing files:"
+        ls -la
+        echo "---"
+        if [ -f "build.json" ]; then
+          echo "✅ build.json exists"
           cat build.json
         else
-          echo "⚠️ Creating default build.json..."
-          cat > build.json << EOF
-{
-  "android": {
-    "debug": {
-      "keystore": "klsradio-release.keystore",
-      "storePassword": "www.klsr.com",
-      "alias": "klsradio_release",
-      "password": "www.klsr.com",
-      "keystoreType": ""
-    },
-    "release": {
-      "keystore": "klsradio-release.keystore",
-      "storePassword": "$KEYSTORE_PASSWORD",
-      "alias": "klsradio_release",
-      "password": "$KEY_PASSWORD",
-      "keystoreType": ""
-    }
-  }
-}
-EOF
-          echo "✅ Default build.json created"
+          echo "❌ build.json not found"
+          exit 1
         fi
-        
-        if [ -f config.xml ]; then
-          echo "✅ config.xml found"
-          # Update config.xml if needed
-          if ! grep -q "android-minSdkVersion" config.xml; then
-            echo "➕ Adding minSdkVersion to config.xml..."
-            sed -i '/<\/widget>/i\
-    <platform name="android">\
-        <preference name="android-minSdkVersion" value="22" />\
-        <preference name="android-targetSdkVersion" value="33" />\
-        <allow-intent href="market:*" />\
-    </platform>' config.xml
-          fi
+        echo "---"
+        if [ -f "config.xml" ]; then
+          echo "✅ config.xml exists"
         else
-          echo "❌ ERROR: config.xml not found!"
+          echo "❌ config.xml not found"
           exit 1
         fi
 
     - name: Setup keystore
       run: |
-        echo "🔑 Setting up keystore..."
-        
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-          echo "📥 Using keystore from GitHub secret..."
+          echo "Using keystore from GitHub secret"
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
-          echo "✅ Keystore decoded"
         elif [ -f klsradio-release.keystore ]; then
-          echo "📁 Using existing keystore file"
+          echo "Using existing keystore file"
         else
-          echo "⚠️ Creating debug keystore for testing..."
+          echo "Creating debug keystore"
           keytool -genkey -v -keystore klsradio-release.keystore \
             -alias klsradio_release -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass "www.klsr.com" -keypass "www.klsr.com" \
             -dname "CN=KLS Radio, OU=Mobile, O=Kingdom Lifestyle, L=Lagos, ST=Lagos, C=NG"
-          echo "✅ Debug keystore created"
         fi
-
-    - name: Clean Android build
-      run: |
-        echo "🧹 Cleaning previous builds..."
-        cordova clean android || true
-        echo "✅ Clean completed"
 
     - name: Build Android Debug APK
       run: |
-        echo "🔨 Building Debug APK..."
-        cordova build android --debug --verbose
-        
-        echo "🔍 Checking build output..."
-        find platforms/android -name "*.apk" -o -name "*.aab" | xargs ls -la 2>/dev/null || echo "No build files found yet"
-        
-        echo "✅ Debug APK built"
+        cordova build android --debug
 
     - name: Build Android Release AAB
       run: |
-        echo "🔨 Building Release AAB..."
         cordova build android --release -- --packageType=bundle --buildConfig=build.json
-        
-        echo "✅ Release AAB built"
 
     - name: Build Android Release APK
       run: |
-        echo "🔨 Building Release APK..."
         cordova build android --release -- --buildConfig=build.json
-        
-        echo "✅ Release APK built"
 
     - name: Upload Debug artifacts
       uses: actions/upload-artifact@v4
       with:
         name: kls-radio-debug
-        path: |
-          platforms/android/app/build/outputs/apk/debug/*.apk
-          platforms/android/app/build/outputs/bundle/debug/*.aab
+        path: platforms/android/app/build/outputs/apk/debug/*.apk
         if-no-files-found: error
         retention-days: 14
 
@@ -235,24 +129,3 @@ EOF
         path: platforms/android/app/build/outputs/apk/release/*.apk
         if-no-files-found: warn
         retention-days: 14
-
-    - name: Show build results
-      run: |
-        echo "📊 Build Results:"
-        echo "================="
-        
-        APK_COUNT=$(find platforms/android/app/build/outputs -name "*.apk" 2>/dev/null | wc -l)
-        AAB_COUNT=$(find platforms/android/app/build/outputs -name "*.aab" 2>/dev/null | wc -l)
-        
-        echo "APK files: $APK_COUNT"
-        echo "AAB files: $AAB_COUNT"
-        
-        if [ $APK_COUNT -eq 0 ] && [ $AAB_COUNT -eq 0 ]; then
-          echo "❌ No build files created!"
-          echo "Listing platforms/android directory:"
-          find platforms/android -type f -name "*.apk" -o -name "*.aab" 2>/dev/null || true
-          exit 1
-        else
-          echo "✅ Build successful!"
-          find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" 2>/dev/null | xargs ls -lh
-        fi
