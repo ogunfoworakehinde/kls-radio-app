@@ -1,65 +1,31 @@
-<?xml version="1.0" encoding="utf-8"?>
-<widget
-    id="com.kingdomlifestyleradio.klsradio"
-    version="12.0.6"
-    xmlns="http://www.w3.org/ns/widgets"
-    xmlns:cdv="http://cordova.apache.org/ns/1.0"
-    xmlns:android="http://schemas.android.com/apk/res/android">
-
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.kingdomlifestyleradio.klsradio" version="12.0.6" xmlns="http://www.w3.org/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android" xmlns:cdv="http://cordova.apache.org/ns/1.0">
     <name>KLS Radio</name>
     <description>KLS Radio Streaming App</description>
-
-    <author email="dev@deloganwebsolution.com"
-            href="https://kingdomlifestyleradio.com">
+    <author email="dev@deloganwebsolution.com" href="https://kingdomlifestyleradio.com">
         Kingdom Lifestyle Radio
     </author>
-
     <content src="index.html" />
-
-    <!-- Permissions -->
     <access origin="*" />
     <allow-navigation href="*" />
-
-    <!-- Splash Screen -->
     <preference name="SplashScreen" value="screen" />
     <preference name="SplashScreenDelay" value="3000" />
     <preference name="SplashMaintainAspectRatio" value="true" />
     <preference name="BackgroundColor" value="#0a0f2d" />
-
-    <!-- Status Bar -->
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="StatusBarBackgroundColor" value="#0a0f2d" />
-
-    <!-- Keep audio running in background -->
     <preference name="KeepRunning" value="true" />
     <preference name="AndroidPersistentFileLocation" value="Compatibility" />
-
-    <!-- Android Platform -->
     <platform name="android">
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="35" />
         <preference name="android-compileSdkVersion" value="35" />
         <preference name="versionCode" value="1206" />
-
-        <!-- App Icon -->
-        <icon src="www/images/icon.png" density="mdpi" />
-
-        <!-- Application settings -->
-        <edit-config file="AndroidManifest.xml"
-                     target="/manifest/application"
-                     mode="merge">
-            <application
-                android:usesCleartextTraffic="true"
-                android:allowBackup="false"
-                android:theme="@style/Theme.AppCompat.NoActionBar"
-                android:stopWithTask="false"
-                android:foregroundServiceType="mediaPlayback" />
+        <icon density="mdpi" src="www/images/icon.png" />
+        <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
+            <application android:allowBackup="false" android:foregroundServiceType="mediaPlayback" android:stopWithTask="false" android:theme="@style/Theme.AppCompat.NoActionBar" android:usesCleartextTraffic="true" />
         </edit-config>
-
-        <!-- Permissions -->
-        <edit-config file="AndroidManifest.xml"
-                     target="/manifest"
-                     mode="merge">
+        <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
             <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -68,19 +34,11 @@
             <uses-permission android:name="android.permission.BLUETOOTH" />
             <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
         </edit-config>
-
-        <!-- Battery-optimization exemption -->
-        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+        <config-file parent="/manifest/application" target="AndroidManifest.xml">
             <meta-data android:name="android.max_aspect" android:value="2.1" />
         </config-file>
-
     </platform>
-
-    <!-- Plugins needed -->
-    <plugin name="cordova-plugin-media" spec="^7.0.0" />
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
-    <plugin name="cordova-plugin-media-session" spec="^1.0.0" />
     <plugin name="cordova-plugin-powermanagement" spec="^1.1.0" />
     <plugin name="cordova-plugin-android-permissions" spec="^1.0.2" />
-
 </widget>
