@@ -29,26 +29,41 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
-    - name: Install dependencies
+    - name: Install Cordova
       run: |
         npm install -g cordova@12.0.0
         npm install
 
-    - name: Create splash screen and icon
+    - name: Verify project structure
       run: |
-        sudo apt-get update
-        sudo apt-get install -y imagemagick
-        mkdir -p www/images
-        convert -size 1080x1920 xc:"#0a0f2d" www/images/splash.png
-        convert -size 512x512 xc:"#0a0f2d" -fill "#d4af37" -draw "circle 256,256 256,400" -pointsize 100 -fill "white" -font "Arial-Bold" -gravity center -annotate +0+0 "KLS" www/images/icon.png
+        echo "Current directory structure:"
+        ls -la
+        echo ""
+        echo "Checking for config.xml:"
+        if [ -f "config.xml" ]; then
+          echo "✅ config.xml found"
+        else
+          echo "❌ config.xml not found"
+          exit 1
+        fi
 
     - name: Add Android platform
       run: |
+        echo "Removing any existing Android platform..."
         cordova platform rm android --save 2>/dev/null || true
-        cordova platform add android@13.0.0 --save
+        
+        echo "Adding Android platform..."
+        cordova platform add android@13.0.0
+        
+        echo "Verifying platform was added..."
+        cordova platform ls
+        
+        echo "Checking platforms directory..."
+        ls -la platforms/
 
-    - name: Install Cordova plugins
+    - name: Install required plugins
       run: |
+        echo "Installing Cordova plugins..."
         cordova plugin add cordova-plugin-whitelist@1.3.4
         cordova plugin add cordova-plugin-network-information@3.0.0
         cordova plugin add cordova-plugin-splashscreen@6.0.1
@@ -58,24 +73,18 @@ jobs:
         cordova plugin add cordova-plugin-android-permissions@1.1.3
         cordova plugin add cordova-plugin-media@5.0.3
         cordova plugin add cordova-plugin-background-mode@0.7.3
+        
+        echo "Installed plugins:"
+        cordova plugin ls
 
-    - name: Verify existing files
+    - name: Verify keystore configuration
       run: |
-        echo "Checking existing files:"
-        ls -la
-        echo "---"
+        echo "Checking build.json..."
         if [ -f "build.json" ]; then
           echo "✅ build.json exists"
           cat build.json
         else
           echo "❌ build.json not found"
-          exit 1
-        fi
-        echo "---"
-        if [ -f "config.xml" ]; then
-          echo "✅ config.xml exists"
-        else
-          echo "❌ config.xml not found"
           exit 1
         fi
 
@@ -84,27 +93,35 @@ jobs:
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
           echo "Using keystore from GitHub secret"
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
+          echo "✅ Keystore created from secret"
         elif [ -f klsradio-release.keystore ]; then
-          echo "Using existing keystore file"
+          echo "✅ Using existing keystore file"
         else
-          echo "Creating debug keystore"
+          echo "⚠️ Creating debug keystore for testing"
           keytool -genkey -v -keystore klsradio-release.keystore \
             -alias klsradio_release -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass "www.klsr.com" -keypass "www.klsr.com" \
             -dname "CN=KLS Radio, OU=Mobile, O=Kingdom Lifestyle, L=Lagos, ST=Lagos, C=NG"
+          echo "✅ Debug keystore created"
         fi
 
     - name: Build Android Debug APK
       run: |
+        echo "Building Debug APK..."
         cordova build android --debug
+        echo "✅ Debug APK built"
 
     - name: Build Android Release AAB
       run: |
+        echo "Building Release AAB..."
         cordova build android --release -- --packageType=bundle --buildConfig=build.json
+        echo "✅ Release AAB built"
 
     - name: Build Android Release APK
       run: |
+        echo "Building Release APK..."
         cordova build android --release -- --buildConfig=build.json
+        echo "✅ Release APK built"
 
     - name: Upload Debug artifacts
       uses: actions/upload-artifact@v4
