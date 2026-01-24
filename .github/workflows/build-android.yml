@@ -29,19 +29,13 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
-    - name: Clean and prepare workspace
-      run: |
-        echo "🧹 Cleaning workspace..."
-        rm -rf platforms plugins node_modules
-        rm -f package-lock.json
-
-    - name: Install Cordova and dependencies
+    - name: Install dependencies
       run: |
         echo "📦 Installing dependencies..."
         npm install -g cordova@12.0.0
         npm install
 
-    - name: Create deep blue splash screen and icon
+    - name: Create splash screen and icon
       run: |
         echo "🎨 Creating splash screen and icons..."
         sudo apt-get update -q
@@ -49,8 +43,10 @@ jobs:
         
         mkdir -p www/images
         
+        # Create deep blue splash screen (#0a0f2d)
         convert -size 1080x1920 xc:"#0a0f2d" www/images/splash.png
         
+        # Create app icon
         convert -size 512x512 xc:"#0a0f2d" \
           -fill "#d4af37" -draw "circle 256,256 256,400" \
           -pointsize 100 -fill "white" -font "Arial-Bold" \
@@ -65,14 +61,16 @@ jobs:
         cordova platform add android@13.0.0 --save
         echo "✅ Android platform added"
 
-    - name: Install required Cordova plugins
+    - name: Install Cordova plugins
       run: |
         echo "🔌 Installing Cordova plugins..."
         
+        # Remove existing plugins
         cordova plugin rm cordova-plugin-whitelist --force 2>/dev/null || true
         cordova plugin rm cordova-plugin-media --force 2>/dev/null || true
         cordova plugin rm cordova-plugin-background-mode --force 2>/dev/null || true
         
+        # Install plugins
         cordova plugin add cordova-plugin-whitelist@1.3.4
         cordova plugin add cordova-plugin-network-information@3.0.0
         cordova plugin add cordova-plugin-splashscreen@6.0.1
@@ -86,53 +84,45 @@ jobs:
         echo "✅ All plugins installed"
         cordova plugin list
 
-    - name: Prepare build configuration
+    - name: Verify build configuration
       run: |
-        echo "⚙️ Preparing build configuration..."
+        echo "⚙️ Verifying build configuration..."
         
-        # Create build.json with proper formatting
-        cat > build.json << 'EOF'
-{
-  "android": {
-    "debug": {
-      "keystore": "debug.keystore",
-      "storePassword": "android",
-      "alias": "androiddebugkey",
-      "password": "android",
-      "keystoreType": ""
-    },
-    "release": {
-      "keystore": "klsradio-release.keystore",
-      "storePassword": "$KEYSTORE_PASSWORD",
-      "alias": "klsradio_release",
-      "password": "$KEY_PASSWORD",
-      "keystoreType": "JKS"
-    }
-  }
-}
-EOF
+        if [ -f build.json ]; then
+          echo "✅ build.json found"
+          echo "Contents:"
+          cat build.json
+        else
+          echo "❌ ERROR: build.json not found!"
+          echo "Please create build.json with your keystore configuration"
+          exit 1
+        fi
         
-        echo "✅ Created/updated build.json"
+        if [ -f config.xml ]; then
+          echo "✅ config.xml found"
+        else
+          echo "❌ ERROR: config.xml not found!"
+          exit 1
+        fi
 
-    - name: Setup keystore for signing
+    - name: Setup keystore
       run: |
         echo "🔑 Setting up keystore..."
         
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "📥 Using keystore from GitHub secret..."
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
-          echo "✅ Production keystore decoded from secret"
+          echo "✅ Keystore decoded"
+        elif [ -f klsradio-release.keystore ]; then
+          echo "📁 Using existing keystore file"
         else
-          echo "⚠️ No keystore secret found, creating debug keystore"
+          echo "⚠️ Creating debug keystore for testing..."
           keytool -genkey -v -keystore klsradio-release.keystore \
             -alias klsradio_release -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass "www.klsr.com" -keypass "www.klsr.com" \
             -dname "CN=KLS Radio, OU=Mobile, O=Kingdom Lifestyle, L=Lagos, ST=Lagos, C=NG"
+          echo "✅ Debug keystore created"
         fi
-        
-        keytool -genkey -v -keystore debug.keystore \
-          -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
-          -storepass android -keypass android \
-          -dname "CN=Android Debug, O=Android, C=US"
 
     - name: Build Android Debug APK
       run: |
@@ -143,23 +133,13 @@ EOF
     - name: Build Android Release AAB
       run: |
         echo "🔨 Building Release AAB..."
-        
-        export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}"
-        export KEY_PASSWORD="${{ secrets.KEY_PASSWORD || 'www.klsr.com' }}"
-        
         cordova build android --release -- --packageType=bundle --buildConfig=build.json
-        
         echo "✅ Release AAB built"
 
     - name: Build Android Release APK
       run: |
         echo "🔨 Building Release APK..."
-        
-        export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}"
-        export KEY_PASSWORD="${{ secrets.KEY_PASSWORD || 'www.klsr.com' }}"
-        
         cordova build android --release -- --buildConfig=build.json
-        
         echo "✅ Release APK built"
 
     - name: Upload Debug artifacts
@@ -188,21 +168,21 @@ EOF
         if-no-files-found: warn
         retention-days: 14
 
-    - name: Verify and list build outputs
+    - name: Show build results
       run: |
-        echo "📊 Build Summary:"
+        echo "📊 Build Results:"
         echo "================="
         
-        find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" | while read file; do
-          size=$(du -h "$file" | cut -f1)
-          echo "📁 $(basename "$file") - $size"
-        done
+        APK_COUNT=$(find platforms/android/app/build/outputs -name "*.apk" 2>/dev/null | wc -l)
+        AAB_COUNT=$(find platforms/android/app/build/outputs -name "*.aab" 2>/dev/null | wc -l)
         
-        count=$(find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" | wc -l)
-        echo ""
-        echo "✅ Total build files: $count"
+        echo "APK files: $APK_COUNT"
+        echo "AAB files: $AAB_COUNT"
         
-        if [ $count -eq 0 ]; then
-          echo "❌ No build files found!"
+        if [ $APK_COUNT -eq 0 ] && [ $AAB_COUNT -eq 0 ]; then
+          echo "❌ No build files created!"
           exit 1
+        else
+          echo "✅ Build successful!"
+          find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" | xargs ls -lh
         fi
