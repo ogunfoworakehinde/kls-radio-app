@@ -10,8 +10,8 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     env:
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'www.klsr.com' }}
 
     steps:
     - name: Checkout code
@@ -29,26 +29,24 @@ jobs:
         node-version: '18'
         cache: 'npm'
 
-    - name: Install dependencies
+    - name: Clean and prepare workspace
       run: |
+        echo "🧹 Cleaning workspace..."
+        rm -rf platforms plugins node_modules
+        rm -f package-lock.json
+        
+    - name: Install Cordova and dependencies
+      run: |
+        echo "📦 Installing dependencies..."
         npm install -g cordova@12.0.0
         npm install
-
-    - name: Clean previous builds
-      run: |
-        rm -rf platforms plugins
-        rm -f package-lock.json
-        rm -rf node_modules
-
-    - name: Reinstall dependencies
-      run: |
-        npm install
-
+        
     - name: Create deep blue splash screen and icon
       run: |
+        echo "🎨 Creating splash screen and icons..."
         # Install ImageMagick for image creation
-        sudo apt-get update
-        sudo apt-get install -y imagemagick
+        sudo apt-get update -q
+        sudo apt-get install -y -q imagemagick
         
         # Create images directory
         mkdir -p www/images
@@ -58,36 +56,29 @@ jobs:
         
         # Create app icon - 512x512 with golden accent
         convert -size 512x512 xc:"#0a0f2d" \
-                -fill "#d4af37" -draw "circle 256,256 256,400" \
-                -pointsize 100 -fill "white" -font "Arial-Bold" \
-                -gravity center -annotate +0+0 "KLS" \
-                www/images/icon.png
-        
-        # Create smaller icons for different densities
-        convert www/images/icon.png -resize 48x48 www/images/icon-48.png
-        convert www/images/icon.png -resize 72x72 www/images/icon-72.png
-        convert www/images/icon.png -resize 96x96 www/images/icon-96.png
-        convert www/images/icon.png -resize 144x144 www/images/icon-144.png
-        convert www/images/icon.png -resize 192x192 www/images/icon-192.png
+          -fill "#d4af37" -draw "circle 256,256 256,400" \
+          -pointsize 100 -fill "white" -font "Arial-Bold" \
+          -gravity center -annotate +0+0 "KLS" \
+          www/images/icon.png
         
         echo "✅ Created splash screen and icons"
 
     - name: Add Android platform
       run: |
+        echo "🤖 Adding Android platform..."
         cordova platform add android@13.0.0 --save
         echo "✅ Android platform added"
 
     - name: Install required Cordova plugins
       run: |
+        echo "🔌 Installing Cordova plugins..."
+        
         # Remove any existing plugins first
         cordova plugin rm cordova-plugin-whitelist --force 2>/dev/null || true
         cordova plugin rm cordova-plugin-media --force 2>/dev/null || true
         cordova plugin rm cordova-plugin-background-mode --force 2>/dev/null || true
-        cordova plugin rm cordova-plugin-android-permissions --force 2>/dev/null || true
         
-        echo "Installing essential plugins..."
-        
-        # INSTALL IN SPECIFIC ORDER (important for dependencies)
+        # Install essential plugins in order
         cordova plugin add cordova-plugin-whitelist@1.3.4
         cordova plugin add cordova-plugin-network-information@3.0.0
         cordova plugin add cordova-plugin-splashscreen@6.0.1
@@ -99,76 +90,118 @@ jobs:
         cordova plugin add cordova-plugin-background-mode@0.7.3
         
         echo "✅ All plugins installed"
-        
-        # List installed plugins
         cordova plugin list
 
-    - name: Create build.json if missing
+    - name: Prepare build configuration
       run: |
-        if [ ! -f build.json ]; then
-          cat > build.json << 'EOF'
-          {
-            "android": {
-              "debug": {
-                "keystore": "debug.keystore",
-                "storePassword": "android",
-                "alias": "androiddebugkey",
-                "password": "android",
-                "keystoreType": ""
-              },
-              "release": {
-                "keystore": "klsradio-release.keystore",
-                "storePassword": "$KEYSTORE_PASSWORD",
-                "alias": "klsradio",
-                "password": "$KEY_PASSWORD",
-                "keystoreType": ""
-              }
-            }
-          }
-          EOF
-          echo "✅ Created build.json"
-        else
-          echo "📁 build.json already exists"
+        echo "⚙️ Preparing build configuration..."
+        
+        # Create build.json with proper EOF handling
+        cat > build.json << 'EOF'
+{
+  "android": {
+    "debug": {
+      "keystore": "debug.keystore",
+      "storePassword": "android",
+      "alias": "androiddebugkey",
+      "password": "android",
+      "keystoreType": ""
+    },
+    "release": {
+      "keystore": "klsradio-release.keystore",
+      "storePassword": "$KEYSTORE_PASSWORD",
+      "alias": "klsradio_release",
+      "password": "$KEY_PASSWORD",
+      "keystoreType": "JKS"
+    }
+  }
+}
+EOF
+        
+        echo "✅ Created/updated build.json"
+        
+        # Update existing config.xml if needed
+        if [ -f config.xml ]; then
+          echo "📄 Updating config.xml version..."
+          # Ensure version is set properly
+          sed -i 's/version="[^"]*"/version="12.0.6"/' config.xml || true
         fi
 
-    - name: Decode keystore from secret
+    - name: Setup keystore for signing
       run: |
-        if [ "${{ secrets.KEYSTORE_BASE64 }}" != "" ]; then
+        echo "🔑 Setting up keystore..."
+        
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
-          echo "✅ Keystore decoded"
+          echo "✅ Production keystore decoded from secret"
+          
+          # Verify keystore
+          if keytool -list -keystore klsradio-release.keystore -storepass "${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}" 2>/dev/null; then
+            echo "✅ Keystore verified"
+          else
+            echo "⚠️ Keystore verification failed, creating debug keystore"
+            keytool -genkey -v -keystore klsradio-release.keystore \
+              -alias klsradio_release -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass "www.klsr.com" -keypass "www.klsr.com" \
+              -dname "CN=KLS Radio, OU=Mobile, O=Kingdom Lifestyle, L=Lagos, ST=Lagos, C=NG"
+          fi
         else
-          # Create a debug keystore for testing
+          echo "⚠️ No keystore secret found, creating debug keystore"
           keytool -genkey -v -keystore klsradio-release.keystore \
-            -alias klsradio -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass android -keypass android -dname "CN=KLS Radio, OU=Mobile, O=Kingdom Lifestyle, L=Lagos, ST=Lagos, C=NG"
-          echo "⚠️ Created debug keystore (use real keystore for production)"
+            -alias klsradio_release -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass "www.klsr.com" -keypass "www.klsr.com" \
+            -dname "CN=KLS Radio, OU=Mobile, O=Kingdom Lifestyle, L=Lagos, ST=Lagos, C=NG"
         fi
+        
+        # Also create debug.keystore for debug builds
+        keytool -genkey -v -keystore debug.keystore \
+          -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+          -storepass android -keypass android \
+          -dname "CN=Android Debug, O=Android, C=US"
 
     - name: Build Android Debug APK
       run: |
         echo "🔨 Building Debug APK..."
-        cordova build android --debug --verbose
+        cordova build android --debug
         echo "✅ Debug APK built"
 
     - name: Build Android Release AAB
       run: |
         echo "🔨 Building Release AAB..."
-        # Set environment variables for build.json
-        export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD || 'android' }}"
-        export KEY_PASSWORD="${{ secrets.KEY_PASSWORD || 'android' }}"
         
+        # Export environment variables for the build
+        export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}"
+        export KEY_PASSWORD="${{ secrets.KEY_PASSWORD || 'www.klsr.com' }}"
+        
+        echo "Using keystore password: ${KEYSTORE_PASSWORD:0:2}**** (hidden)"
+        
+        # Build release AAB
         cordova build android --release -- --packageType=bundle --buildConfig=build.json
+        
         echo "✅ Release AAB built"
 
-    - name: Upload Debug APK artifact
+    - name: Build Android Release APK
+      run: |
+        echo "🔨 Building Release APK..."
+        
+        # Export environment variables for the build
+        export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}"
+        export KEY_PASSWORD="${{ secrets.KEY_PASSWORD || 'www.klsr.com' }}"
+        
+        # Build release APK
+        cordova build android --release -- --buildConfig=build.json
+        
+        echo "✅ Release APK built"
+
+    - name: Upload Debug artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: kls-radio-debug-apk
+        name: kls-radio-debug
         path: |
           platforms/android/app/build/outputs/apk/debug/*.apk
           platforms/android/app/build/outputs/bundle/debug/*.aab
         if-no-files-found: error
-        retention-days: 7
+        retention-days: 14
 
     - name: Upload Release AAB artifact
       uses: actions/upload-artifact@v4
@@ -176,7 +209,7 @@ jobs:
         name: kls-radio-release-aab
         path: platforms/android/app/build/outputs/bundle/release/*.aab
         if-no-files-found: error
-        retention-days: 7
+        retention-days: 14
 
     - name: Upload Release APK artifact
       uses: actions/upload-artifact@v4
@@ -184,12 +217,25 @@ jobs:
         name: kls-radio-release-apk
         path: platforms/android/app/build/outputs/apk/release/*.apk
         if-no-files-found: warn
-        retention-days: 7
+        retention-days: 14
 
-    - name: List build outputs
+    - name: Verify and list build outputs
       run: |
-        echo "📁 Build outputs:"
-        find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" | xargs ls -la
+        echo "📊 Build Summary:"
+        echo "================="
+        
+        # List all build outputs
+        find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" | while read file; do
+          size=$(du -h "$file" | cut -f1)
+          echo "📁 $(basename "$file") - $size"
+        done
+        
+        # Count total builds
+        count=$(find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" | wc -l)
         echo ""
-        echo "📊 File sizes:"
-        find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" -exec du -h {} \;
+        echo "✅ Total build files: $count"
+        
+        if [ $count -eq 0 ]; then
+          echo "❌ No build files found!"
+          exit 1
+        fi
