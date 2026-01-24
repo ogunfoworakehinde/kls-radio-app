@@ -34,27 +34,23 @@ jobs:
         echo "🧹 Cleaning workspace..."
         rm -rf platforms plugins node_modules
         rm -f package-lock.json
-        
+
     - name: Install Cordova and dependencies
       run: |
         echo "📦 Installing dependencies..."
         npm install -g cordova@12.0.0
         npm install
-        
+
     - name: Create deep blue splash screen and icon
       run: |
         echo "🎨 Creating splash screen and icons..."
-        # Install ImageMagick for image creation
         sudo apt-get update -q
         sudo apt-get install -y -q imagemagick
         
-        # Create images directory
         mkdir -p www/images
         
-        # Create deep blue splash screen (#0a0f2d) - 1080x1920
         convert -size 1080x1920 xc:"#0a0f2d" www/images/splash.png
         
-        # Create app icon - 512x512 with golden accent
         convert -size 512x512 xc:"#0a0f2d" \
           -fill "#d4af37" -draw "circle 256,256 256,400" \
           -pointsize 100 -fill "white" -font "Arial-Bold" \
@@ -73,12 +69,10 @@ jobs:
       run: |
         echo "🔌 Installing Cordova plugins..."
         
-        # Remove any existing plugins first
         cordova plugin rm cordova-plugin-whitelist --force 2>/dev/null || true
         cordova plugin rm cordova-plugin-media --force 2>/dev/null || true
         cordova plugin rm cordova-plugin-background-mode --force 2>/dev/null || true
         
-        # Install essential plugins in order
         cordova plugin add cordova-plugin-whitelist@1.3.4
         cordova plugin add cordova-plugin-network-information@3.0.0
         cordova plugin add cordova-plugin-splashscreen@6.0.1
@@ -96,7 +90,7 @@ jobs:
       run: |
         echo "⚙️ Preparing build configuration..."
         
-        # Create build.json with proper EOF handling
+        # Create build.json with proper formatting
         cat > build.json << 'EOF'
 {
   "android": {
@@ -119,13 +113,6 @@ jobs:
 EOF
         
         echo "✅ Created/updated build.json"
-        
-        # Update existing config.xml if needed
-        if [ -f config.xml ]; then
-          echo "📄 Updating config.xml version..."
-          # Ensure version is set properly
-          sed -i 's/version="[^"]*"/version="12.0.6"/' config.xml || true
-        fi
 
     - name: Setup keystore for signing
       run: |
@@ -134,17 +121,6 @@ EOF
         if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
           echo "✅ Production keystore decoded from secret"
-          
-          # Verify keystore
-          if keytool -list -keystore klsradio-release.keystore -storepass "${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}" 2>/dev/null; then
-            echo "✅ Keystore verified"
-          else
-            echo "⚠️ Keystore verification failed, creating debug keystore"
-            keytool -genkey -v -keystore klsradio-release.keystore \
-              -alias klsradio_release -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass "www.klsr.com" -keypass "www.klsr.com" \
-              -dname "CN=KLS Radio, OU=Mobile, O=Kingdom Lifestyle, L=Lagos, ST=Lagos, C=NG"
-          fi
         else
           echo "⚠️ No keystore secret found, creating debug keystore"
           keytool -genkey -v -keystore klsradio-release.keystore \
@@ -153,7 +129,6 @@ EOF
             -dname "CN=KLS Radio, OU=Mobile, O=Kingdom Lifestyle, L=Lagos, ST=Lagos, C=NG"
         fi
         
-        # Also create debug.keystore for debug builds
         keytool -genkey -v -keystore debug.keystore \
           -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
           -storepass android -keypass android \
@@ -169,13 +144,9 @@ EOF
       run: |
         echo "🔨 Building Release AAB..."
         
-        # Export environment variables for the build
         export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}"
         export KEY_PASSWORD="${{ secrets.KEY_PASSWORD || 'www.klsr.com' }}"
         
-        echo "Using keystore password: ${KEYSTORE_PASSWORD:0:2}**** (hidden)"
-        
-        # Build release AAB
         cordova build android --release -- --packageType=bundle --buildConfig=build.json
         
         echo "✅ Release AAB built"
@@ -184,11 +155,9 @@ EOF
       run: |
         echo "🔨 Building Release APK..."
         
-        # Export environment variables for the build
         export KEYSTORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD || 'www.klsr.com' }}"
         export KEY_PASSWORD="${{ secrets.KEY_PASSWORD || 'www.klsr.com' }}"
         
-        # Build release APK
         cordova build android --release -- --buildConfig=build.json
         
         echo "✅ Release APK built"
@@ -224,13 +193,11 @@ EOF
         echo "📊 Build Summary:"
         echo "================="
         
-        # List all build outputs
         find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" | while read file; do
           size=$(du -h "$file" | cut -f1)
           echo "📁 $(basename "$file") - $size"
         done
         
-        # Count total builds
         count=$(find platforms/android/app/build/outputs -name "*.apk" -o -name "*.aab" | wc -l)
         echo ""
         echo "✅ Total build files: $count"
