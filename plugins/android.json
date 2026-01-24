@@ -1,0 +1,34 @@
+{
+  "prepare_queue": {
+    "installed": [],
+    "uninstalled": []
+  },
+  "config_munge": {
+    "files": {}
+  },
+  "installed_plugins": {
+    "cordova-plugin-network-information": {
+      "PACKAGE_NAME": "com.kingdomlifestyleradio.klsradio"
+    },
+    "cordova-plugin-splashscreen": {
+      "PACKAGE_NAME": "com.kingdomlifestyleradio.klsradio"
+    },
+    "cordova-plugin-statusbar": {
+      "PACKAGE_NAME": "com.kingdomlifestyleradio.klsradio"
+    },
+    "cordova-plugin-media": {
+      "PACKAGE_NAME": "com.kingdomlifestyleradio.klsradio"
+    },
+    "cordova-plugin-background-mode": {
+      "PACKAGE_NAME": "com.kingdomlifestyleradio.klsradio"
+    }
+  },
+  "dependent_plugins": {
+    "cordova-plugin-file": {
+      "PACKAGE_NAME": "com.kingdomlifestyleradio.klsradio"
+    },
+    "cordova-plugin-device": {
+      "PACKAGE_NAME": "com.kingdomlifestyleradio.klsradio"
+    }
+  }
+}
