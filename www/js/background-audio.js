@@ -1,331 +1,146 @@
-// Background Audio Service for Cordova Android App
-document.addEventListener('deviceready', onDeviceReady, false);
+document.addEventListener('deviceready', initPlayer, false);
 
-let backgroundMode = null;
 let media = null;
-let isPlaying = false;
-let currentStreamUrl = '';
+let currentIndex = null;
+let reconnectTimer = null;
+let playing = false;
 
-function onDeviceReady() {
-    console.log('Cordova device ready, initializing background audio...');
-    
-    // Initialize Status Bar
-    if (window.StatusBar) {
-        StatusBar.overlaysWebView(false);
-        StatusBar.backgroundColorByHexString("#0a0f2d");
-        StatusBar.styleLightContent();
+const STATIONS = [
+    {
+        name: "English Gospel",
+        url: "https://s3.voscast.com:9425/stream",
+        description: "24/7 English Gospel Music"
+    },
+    {
+        name: "Yoruba Gospel",
+        url: "https://s3.voscast.com:10745/stream",
+        description: "Yoruba Language Worship"
+    },
+    {
+        name: "Praise Worship",
+        url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
+        description: "Contemporary Praise"
     }
-    
-    // Initialize Splash Screen
-    if (window.navigator.splashscreen) {
-        setTimeout(() => {
-            navigator.splashscreen.hide();
-        }, 2000);
+];
+
+function initPlayer() {
+    console.log("KLS Radio ready");
+
+    // Keep CPU awake
+    if (window.powerManagement) {
+        powerManagement.acquire();
     }
-    
-    // Initialize background mode
-    if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
-        backgroundMode = cordova.plugins.backgroundMode;
-        
-        // Configure background mode
-        backgroundMode.enable();
-        backgroundMode.setDefaults({
+
+    // Background notification
+    if (cordova.plugins.backgroundMode) {
+        cordova.plugins.backgroundMode.setDefaults({
             title: 'KLS Radio',
-            text: 'Playing Kingdom Lifestyle Radio',
-            icon: 'icon',
-            color: '0a0f2d',
-            resume: true,
-            hidden: false,
-            bigText: true,
-            channelName: 'KLS Radio Player',
-            channelDescription: 'Background audio playback',
-            importance: 4, // IMPORTANCE_HIGH
-            allowClose: false,
+            text: 'Ready',
             silent: false
         });
-        
-        // Event listeners for background mode
-        backgroundMode.on('activate', function() {
-            console.log('Background mode activated');
-            backgroundMode.disableWebViewOptimizations();
-            backgroundMode.disableBatteryOptimizations();
-            
-            // Update notification
-            backgroundMode.configure({
-                text: 'Playing in background'
-            });
-        });
-        
-        backgroundMode.on('deactivate', function() {
-            console.log('Background mode deactivated');
-        });
-        
-        backgroundMode.on('failure', function(errorCode) {
-            console.log('Background mode failed:', errorCode);
-        });
-        
-        console.log('Background mode plugin initialized');
-    } else {
-        console.log('Background mode plugin not available');
     }
-    
-    // Request Android permissions
-    if (window.cordova && window.cordova.plugins && window.cordova.plugins.permissions) {
-        const permissions = cordova.plugins.permissions;
-        
-        const permissionList = [
-            permissions.ACCESS_NETWORK_STATE,
-            permissions.INTERNET,
-            permissions.WAKE_LOCK,
-            permissions.FOREGROUND_SERVICE
-        ];
-        
-        permissions.requestPermissions(permissionList, 
-            function(success) {
-                console.log('Android permissions granted');
-            },
-            function(error) {
-                console.log('Android permissions error:', error);
-            }
-        );
-    }
-    
-    // Initialize media plugin
-    if (window.Media) {
-        console.log('Media plugin available');
-    } else {
-        console.log('Media plugin not available');
+
+    // Media Session buttons
+    if (window.MediaSession) {
+        MediaSession.setActionHandler('play', () => resume());
+        MediaSession.setActionHandler('pause', () => pause());
+        MediaSession.setActionHandler('nexttrack', () => next());
+        MediaSession.setActionHandler('previoustrack', () => previous());
     }
 }
 
-// Background Audio Functions
-function initBackgroundAudio(streamUrl, onSuccess, onError, onStatus) {
-    if (!window.Media) {
-        console.log('Media plugin not available for background audio');
-        if (onError) onError({ code: 0, message: 'Media plugin not available' });
-        return null;
-    }
-    
-    currentStreamUrl = streamUrl;
-    
-    try {
-        // Create media instance with proper options for background playback
-        media = new Media(
-            streamUrl,
-            function() {
-                console.log('Media playback completed');
-                if (onSuccess) onSuccess();
-            },
-            function(error) {
-                console.log('Media error:', error);
-                if (onError) onError(error);
-                
-                // Auto-retry on error
-                if (isPlaying) {
-                    setTimeout(() => {
-                        if (media) {
-                            media.play();
-                        }
-                    }, 3000);
-                }
-            },
-            function(status) {
-                console.log('Media status:', status);
-                if (onStatus) onStatus(status);
-                
-                switch(status) {
-                    case Media.MEDIA_STARTING:
-                        console.log('Media starting...');
-                        break;
-                    case Media.MEDIA_RUNNING:
-                        console.log('Media running');
-                        if (backgroundMode && !backgroundMode.isActive()) {
-                            backgroundMode.enable();
-                        }
-                        break;
-                    case Media.MEDIA_PAUSED:
-                        console.log('Media paused');
-                        break;
-                    case Media.MEDIA_STOPPED:
-                        console.log('Media stopped');
-                        break;
-                    case Media.MEDIA_NONE:
-                        console.log('Media none');
-                        break;
-                }
-            }
-        );
-        
-        // Set volume to maximum
-        if (media.setVolume) {
-            media.setVolume('1.0');
-        }
-        
-        console.log('Background audio initialized for:', streamUrl);
-        return media;
-        
-    } catch (error) {
-        console.log('Error initializing background audio:', error);
-        if (onError) onError(error);
-        return null;
+function play(index) {
+    stop();
+
+    const station = STATIONS[index];
+    if (!station) return;
+
+    currentIndex = index;
+
+    media = new Media(
+        station.url,
+        () => console.log("Stream ended"),
+        err => retry(err)
+    );
+
+    media.play();
+    playing = true;
+
+    cordova.plugins.backgroundMode.enable();
+    updateNotification(station);
+    updateMediaSession(station);
+}
+
+function resume() {
+    if (media && !playing) {
+        media.play();
+        playing = true;
     }
 }
 
-function playBackgroundAudio(streamUrl) {
-    console.log('playBackgroundAudio called for:', streamUrl);
-    
-    if (!media || currentStreamUrl !== streamUrl) {
-        console.log('Initializing new background audio...');
-        media = initBackgroundAudio(
-            streamUrl,
-            function() {
-                console.log('Background audio playback completed');
-            },
-            function(error) {
-                console.log('Background audio error:', error);
-            },
-            function(status) {
-                console.log('Background audio status:', status);
-            }
-        );
-    }
-    
+function pause() {
+    if (!media) return;
+    media.pause();
+    playing = false;
+}
+
+function stop() {
     if (media) {
-        try {
-            media.play();
-            isPlaying = true;
-            
-            // Enable background mode
-            if (backgroundMode) {
-                if (!backgroundMode.isEnabled()) {
-                    backgroundMode.enable();
-                }
-                backgroundMode.configure({
-                    text: 'Playing: Kingdom Lifestyle Radio',
-                    ticker: 'KLS Radio is playing'
-                });
-            }
-            
-            console.log('Background audio started successfully');
-            return true;
-        } catch (error) {
-            console.log('Error playing background audio:', error);
-            return false;
-        }
+        media.stop();
+        media.release();
+        media = null;
     }
-    
-    return false;
+    playing = false;
+    cordova.plugins.backgroundMode.disable();
 }
 
-function pauseBackgroundAudio() {
-    console.log('pauseBackgroundAudio called');
-    
-    if (media && isPlaying) {
-        try {
-            media.pause();
-            isPlaying = false;
-            
-            if (backgroundMode) {
-                backgroundMode.configure({
-                    text: 'KLS Radio - Paused'
-                });
-            }
-            
-            console.log('Background audio paused');
-            return true;
-        } catch (error) {
-            console.log('Error pausing background audio:', error);
-            return false;
-        }
-    }
-    
-    return false;
+function next() {
+    let nextIndex = (currentIndex + 1) % STATIONS.length;
+    play(nextIndex);
 }
 
-function stopBackgroundAudio() {
-    console.log('stopBackgroundAudio called');
-    
-    if (media) {
-        try {
-            media.stop();
-            media.release();
-            media = null;
-            isPlaying = false;
-            currentStreamUrl = '';
-            
-            if (backgroundMode) {
-                backgroundMode.disable();
-            }
-            
-            console.log('Background audio stopped');
-            return true;
-        } catch (error) {
-            console.log('Error stopping background audio:', error);
-            return false;
-        }
-    }
-    
-    return false;
+function previous() {
+    let prevIndex = (currentIndex - 1 + STATIONS.length) % STATIONS.length;
+    play(prevIndex);
 }
 
-function setBackgroundAudioVolume(volume) {
-    if (media && media.setVolume) {
-        try {
-            media.setVolume(volume.toString());
-            console.log('Background audio volume set to:', volume);
-            return true;
-        } catch (error) {
-            console.log('Error setting volume:', error);
-            return false;
-        }
-    }
-    return false;
+function retry(error) {
+    console.log("Stream error:", error);
+    if (!playing) return;
+
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+        play(currentIndex);
+    }, 3000);
 }
 
-function getCurrentPlaybackTime() {
-    if (media && media.getCurrentPosition) {
-        return new Promise((resolve) => {
-            media.getCurrentPosition(resolve);
-        });
-    }
-    return Promise.resolve(0);
+function updateNotification(station) {
+    cordova.plugins.backgroundMode.configure({
+        title: station.name,
+        text: station.description
+    });
 }
 
-function getDuration() {
-    if (media && media.getDuration) {
-        return new Promise((resolve) => {
-            media.getDuration(resolve);
-        });
-    }
-    return Promise.resolve(0);
+function updateMediaSession(station) {
+    if (!window.MediaSession) return;
+
+    MediaSession.setMetadata({
+        title: station.name,
+        artist: "Kingdom Lifestyle Radio",
+        album: station.description,
+        artwork: [
+            { src: "www/images/icon.png", sizes: "512x512", type: "image/png" }
+        ]
+    });
+
+    MediaSession.setPlaybackState(playing ? 'playing' : 'paused');
 }
 
-// Export functions to window
-window.BackgroundAudio = {
-    init: initBackgroundAudio,
-    play: playBackgroundAudio,
-    pause: pauseBackgroundAudio,
-    stop: stopBackgroundAudio,
-    setVolume: setBackgroundAudioVolume,
-    getCurrentTime: getCurrentPlaybackTime,
-    getDuration: getDuration,
-    isPlaying: () => isPlaying,
-    getCurrentUrl: () => currentStreamUrl,
-    enableBackgroundMode: function() {
-        if (backgroundMode) {
-            backgroundMode.enable();
-            return true;
-        }
-        return false;
-    },
-    disableBackgroundMode: function() {
-        if (backgroundMode) {
-            backgroundMode.disable();
-            return true;
-        }
-        return false;
-    },
-    isBackgroundModeActive: function() {
-        return backgroundMode ? backgroundMode.isActive() : false;
-    }
+window.KLSRadio = {
+    play,
+    pause,
+    stop,
+    next,
+    previous,
+    stations: STATIONS
 };

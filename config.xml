@@ -16,24 +16,24 @@
 
     <content src="index.html" />
 
-    <!-- Permissions -->
+    <!-- Network -->
     <access origin="*" />
     <allow-navigation href="*" />
 
-    <!-- Splash Screen (DEEP BLUE) -->
-    <preference name="SplashScreen" value="screen" />
+    <!-- Background & Media -->
+    <preference name="AndroidPersistentFileLocation" value="Internal" />
+    <preference name="KeepRunning" value="true" />
+    <preference name="DisallowOverscroll" value="true" />
+
+    <!-- Splash -->
     <preference name="SplashScreenDelay" value="3000" />
-    <preference name="SplashMaintainAspectRatio" value="true" />
     <preference name="BackgroundColor" value="#0a0f2d" />
 
     <!-- Status Bar -->
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="StatusBarBackgroundColor" value="#0a0f2d" />
 
-    <!-- Keep audio playing in background -->
-    <preference name="KeepRunning" value="true" />
-
-    <!-- Android Platform -->
+    <!-- Android -->
     <platform name="android">
 
         <preference name="android-minSdkVersion" value="24" />
@@ -41,27 +41,35 @@
         <preference name="android-compileSdkVersion" value="35" />
         <preference name="versionCode" value="1206" />
 
-        <!-- Application settings -->
-        <edit-config file="AndroidManifest.xml"
-                     target="/manifest/application"
-                     mode="merge">
+        <!-- REQUIRED for background audio -->
+        <preference name="AndroidLaunchMode" value="singleTask" />
+
+        <!-- Application config -->
+        <edit-config
+            file="AndroidManifest.xml"
+            target="/manifest/application"
+            mode="merge">
             <application
                 android:usesCleartextTraffic="true"
                 android:allowBackup="false"
-                android:theme="@style/Theme.AppCompat.NoActionBar" />
+                android:foregroundServiceType="mediaPlayback" />
         </edit-config>
 
         <!-- Permissions -->
-        <edit-config file="AndroidManifest.xml"
-                     target="/manifest"
-                     mode="merge">
+        <edit-config
+            file="AndroidManifest.xml"
+            target="/manifest"
+            mode="merge">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
             <uses-permission android:name="android.permission.WAKE_LOCK" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
         </edit-config>
 
-        <!-- App Icon -->
+        <!-- Icon -->
         <icon src="www/images/icon.png" density="mdpi" />
+
     </platform>
 </widget>
+
