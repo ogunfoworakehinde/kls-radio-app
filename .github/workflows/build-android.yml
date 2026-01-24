@@ -10,111 +10,110 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
 
-    env:
-      KEYSTORE_PASSWORD: www.klsr.com
-      KEY_PASSWORD: www.klsr.com
-
     steps:
-    # ----------------------------------------------------
+    # ------------------------------------
     # Checkout
-    # ----------------------------------------------------
+    # ------------------------------------
     - uses: actions/checkout@v4
 
-    # ----------------------------------------------------
+    # ------------------------------------
     # Java
-    # ----------------------------------------------------
+    # ------------------------------------
     - uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: '17'
 
-    # ----------------------------------------------------
+    # ------------------------------------
     # Node
-    # ----------------------------------------------------
+    # ------------------------------------
     - uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    # ----------------------------------------------------
+    # ------------------------------------
     # Install Cordova
-    # ----------------------------------------------------
+    # ------------------------------------
     - name: Install Cordova
       run: npm install -g cordova@12.0.0
 
-    # ----------------------------------------------------
-    # Validate assets
-    # ----------------------------------------------------
-    - name: Validate web assets
+    # ------------------------------------
+    # Validate source app
+    # ------------------------------------
+    - name: Validate source files
       run: |
-        test -d www || (echo "❌ www missing" && exit 1)
+        test -d www || (echo "❌ www folder missing" && exit 1)
         test -f config.xml || (echo "❌ config.xml missing" && exit 1)
+        echo "✅ Source files OK"
 
-    # ----------------------------------------------------
-    # Fix config.xml
-    # ----------------------------------------------------
-    - name: Fix config.xml
-      run: |
-        sed -i 's|xmlns:android="http://schemas.android.com/apk/res/android"||g' config.xml
-
-    # ----------------------------------------------------
-    # Create Cordova project
-    # ----------------------------------------------------
+    # ------------------------------------
+    # Create Cordova project (CLEAN)
+    # ------------------------------------
     - name: Create Cordova project
       run: |
+        rm -rf cordova
         cordova create cordova com.klsr.radio "KLS Radio"
+
+        # Replace Cordova www with your app
         rm -rf cordova/www/*
         cp -R www/* cordova/www/
+
+        # Use your config.xml
         cp config.xml cordova/
 
-    # ----------------------------------------------------
-    # Install ImageMagick
-    # ----------------------------------------------------
-    - name: Create icons & splash
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y imagemagick
-        mkdir -p cordova/www/images
-        convert -size 512x512 xc:"#0a0f2d" cordova/www/images/icon.png
-        convert -size 1080x1920 xc:"#0a0f2d" cordova/www/images/splash.png
+        # Copy network security config if used
+        cp network_security_config.xml cordova/ || true
 
-    # ----------------------------------------------------
-    # Add Android platform  ✅ FIXED
-    # ----------------------------------------------------
+    # ------------------------------------
+    # VERIFY Cordova project (IMPORTANT)
+    # ------------------------------------
+    - name: Verify Cordova project
+      run: |
+        test -d cordova/.cordova || (echo "❌ Cordova project not created" && exit 1)
+        test -d cordova/www || exit 1
+        test -f cordova/config.xml || exit 1
+        echo "✅ Cordova project verified"
+
+    # ------------------------------------
+    # Add Android platform
+    # ------------------------------------
     - name: Add Android platform
       working-directory: cordova
       run: |
         cordova platform add android@13.0.0
         cordova platform ls
 
-    # ----------------------------------------------------
-    # Install plugins
-    # ----------------------------------------------------
+    # ------------------------------------
+    # Install required plugins
+    # ------------------------------------
     - name: Install plugins
       working-directory: cordova
       run: |
         cordova plugin add cordova-plugin-device
         cordova plugin add cordova-plugin-network-information
         cordova plugin add cordova-plugin-file
-        cordova plugin add cordova-plugin-media
+        cordova plugin add cordova-plugin-media@5.0.3
         cordova plugin add cordova-plugin-background-mode
+        cordova plugin add cordova-plugin-splashscreen
+        cordova plugin add cordova-plugin-statusbar
 
-    # ----------------------------------------------------
+    # ------------------------------------
     # Build Debug APK
-    # ----------------------------------------------------
+    # ------------------------------------
     - name: Build Debug APK
       working-directory: cordova
       run: cordova build android --debug
 
-    # ----------------------------------------------------
+    # ------------------------------------
     # Build Release AAB
-    # ----------------------------------------------------
+    # ------------------------------------
     - name: Build Release AAB
       working-directory: cordova
       run: cordova build android --release -- --packageType=bundle
 
-    # ----------------------------------------------------
+    # ------------------------------------
     # Upload artifacts
-    # ----------------------------------------------------
+    # ------------------------------------
     - uses: actions/upload-artifact@v4
       with:
         name: debug-apk
