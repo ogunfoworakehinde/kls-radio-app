@@ -1,88 +1,45 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.kingdomlifestyleradio.klsradio" version="12.0.6"
-    xmlns="http://www.w3.org/ns/widgets"
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:cdv="http://cordova.apache.org/ns/1.0">
-
-    <name>KLS Radio</name>
-    <description>KLS Radio Streaming App</description>
-    <author email="dev@deloganwebsolution.com" href="https://kingdomlifestyleradio.com">
+<widget id="com.kingdomlifestyleradio.app" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Kingdom Lifestyle Radio</name>
+    <description>24/7 Gospel Radio Streaming</description>
+    <author email="support@kingdomlifestyleradio.com" href="https://kingdomlifestyleradio.com">
         Kingdom Lifestyle Radio
     </author>
-
-    <!-- Entry point -->
-    <content src="index.html" />
-
-    <!-- Access -->
-    <access origin="*" />
-    <allow-navigation href="*" />
-
-    <!-- Splash & Status Bar -->
-    <preference name="SplashScreen" value="screen" />
-    <preference name="SplashScreenDelay" value="3000" />
-    <preference name="SplashMaintainAspectRatio" value="true" />
-    <preference name="BackgroundColor" value="#0a0f2d" />
-    <preference name="StatusBarStyle" value="lightcontent" />
-    <preference name="StatusBarBackgroundColor" value="#0a0f2d" />
-
-    <!-- Background Audio & Notifications -->
-    <preference name="KeepRunning" value="true" />
-    <preference name="AndroidPersistentFileLocation" value="Compatibility" />
-    <preference name="mediaVolume" value="playback" />
-    <preference name="AllowInlineMediaPlayback" value="true" />
-
-    <!-- Android platform specific -->
+    
+    <!-- Android specific -->
     <platform name="android">
-        <preference name="android-minSdkVersion" value="24" />
-        <preference name="android-targetSdkVersion" value="35" />
-        <preference name="android-compileSdkVersion" value="35" />
-        <preference name="versionCode" value="1206" />
-
-        <!-- App icon -->
-        <icon density="mdpi" src="www/images/icon.png" />
-
-        <!-- Permissions -->
-        <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
+        <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
+            <application android:usesCleartextTraffic="true" />
+        </edit-config>
+        <resource-file src="google-services.json" target="app/google-services.json" />
+        
+        <!-- Allow internet and network state permissions -->
+        <config-file parent="/*" target="AndroidManifest.xml">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+            <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
             <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
             <uses-permission android:name="android.permission.WAKE_LOCK" />
-            <uses-permission android:name="android.permission.BLUETOOTH" />
-            <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-            <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-            <!-- For Android 13+ -->
-            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-        </edit-config>
-
-        <!-- Application attributes for background streaming -->
-        <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
-            <application
-                android:allowBackup="false"
-                android:stopWithTask="false"
-                android:foregroundServiceType="mediaPlayback|connectedDevice"
-                android:theme="@style/Theme.AppCompat.NoActionBar"
-                android:usesCleartextTraffic="true" />
-        </edit-config>
-
-        <!-- Music Controls Notification Channel -->
-        <config-file parent="/manifest/application" target="AndroidManifest.xml">
-            <meta-data android:name="android.max_aspect" android:value="2.1" />
-            
-            <!-- Notification channel for Android 8.0+ -->
-            <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" 
-                      android:value="@string/default_notification_channel_id" />
+            <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+            <uses-permission android:name="android.permission.VIBRATE" />
         </config-file>
-
-        <!-- Background Mode Service -->
+        
+        <!-- Background service for audio playback -->
         <config-file parent="/manifest/application" target="AndroidManifest.xml">
-            <service
+            <service 
                 android:name="de.appplant.cordova.plugin.background.ForegroundService"
-                android:foregroundServiceType="mediaPlayback"
-                android:exported="false" />
+                android:enabled="true"
+                android:exported="false">
+            </service>
+            <receiver android:name="de.appplant.cordova.plugin.background.ForegroundService$Receiver">
+                <intent-filter>
+                    <action android:name="android.intent.action.BOOT_COMPLETED" />
+                </intent-filter>
+            </receiver>
         </config-file>
     </platform>
-
-    <!-- iOS specific (if needed) -->
+    
+    <!-- iOS specific -->
     <platform name="ios">
         <config-file parent="UIBackgroundModes" target="*-Info.plist">
             <array>
@@ -90,19 +47,73 @@
                 <string>fetch</string>
             </array>
         </config-file>
+        <edit-config target="NSAppTransportSecurity" file="*-Info.plist">
+            <dict>
+                <key>NSAllowsArbitraryLoads</key>
+                <true/>
+            </dict>
+        </edit-config>
     </platform>
-
-    <!-- Plugins -->
-    <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
-    <plugin name="cordova-plugin-music-controls2" spec="^3.0.4" />
-    <plugin name="cordova-plugin-android-permissions" spec="^1.0.2" />
-    <plugin name="cordova-plugin-media" spec="^5.0.3" />
-    <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     
-    <!-- Core plugins -->
-    <plugin name="cordova-plugin-whitelist" spec="^1.3.5" />
-    <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
-    <plugin name="cordova-plugin-splashscreen" spec="^6.0.2" />
-    <plugin name="cordova-plugin-inappbrowser" spec="^5.0.0" />
-
+    <!-- Preferences -->
+    <preference name="AndroidLaunchMode" value="singleTask" />
+    <preference name="DisallowOverscroll" value="true" />
+    <preference name="BackgroundColor" value="0xff1a235c" />
+    <preference name="Orientation" value="portrait" />
+    <preference name="AutoHideSplashScreen" value="true" />
+    <preference name="SplashScreenDelay" value="3000" />
+    <preference name="FadeSplashScreenDuration" value="300" />
+    <preference name="AndroidInsecureFileModeEnabled" value="true" />
+    
+    <!-- For Android 12+ -->
+    <preference name="android-targetSdkVersion" value="33" />
+    <preference name="android-minSdkVersion" value="22" />
+    <preference name="android-compileSdkVersion" value="33" />
+    
+    <!-- Allow all external URLs -->
+    <allow-navigation href="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-intent href="tel:*" />
+    <allow-intent href="sms:*" />
+    <allow-intent href="mailto:*" />
+    <allow-intent href="geo:*" />
+    
+    <!-- Icons and splash screens -->
+    <icon src="res/icon.png" />
+    <icon src="res/icon@2x.png" width="96" height="96" />
+    <icon src="res/icon@3x.png" width="144" height="144" />
+    
+    <splash src="res/splash.png" />
+    <splash src="res/splash@2x.png" width="640" height="960" />
+    <splash src="res/splash@3x.png" width="750" height="1334" />
+    
+    <!-- Plugins -->
+    <plugin name="cordova-plugin-whitelist" spec="1.3.4" />
+    <plugin name="cordova-plugin-statusbar" spec="2.4.3" />
+    <plugin name="cordova-plugin-splashscreen" spec="6.0.0" />
+    <plugin name="cordova-plugin-insomnia" spec="4.3.0" />
+    <plugin name="cordova-plugin-android-permissions" spec="1.1.2" />
+    <plugin name="cordova-plugin-background-mode" spec="0.7.3" />
+    <plugin name="cordova-plugin-media" spec="5.0.3" />
+    <plugin name="cordova-plugin-file" spec="6.0.2" />
+    <plugin name="cordova-plugin-network-information" spec="2.0.2" />
+    <plugin name="cordova-plugin-device" spec="2.0.3" />
+    
+    <!-- For Android 12+ notification compatibility -->
+    <plugin name="cordova-plugin-badge" spec="0.8.8" />
+    <plugin name="cordova-plugin-local-notification" spec="0.9.0-beta.2" />
+    
+    <!-- Push notifications (if needed) -->
+    <!-- <plugin name="phonegap-plugin-push" spec="2.3.0" /> -->
+    
+    <!-- Firebase plugins -->
+    <plugin name="cordova-plugin-firebasex" spec="16.1.0" />
+    
+    <!-- For in-app browser -->
+    <plugin name="cordova-plugin-inappbrowser" spec="5.0.0" />
+    
+    <!-- For audio streaming -->
+    <plugin name="cordova-plugin-streaming-media" spec="2.3.0" />
+    
 </widget>
