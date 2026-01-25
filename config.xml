@@ -6,36 +6,50 @@
         Kingdom Lifestyle Radio
     </author>
     
+    <!-- Update icon paths to point to www/images/ -->
+    <icon src="www/images/icon.png" />
+    <icon src="www/images/icon@2x.png" width="96" height="96" />
+    <icon src="www/images/icon@3x.png" width="144" height="144" />
+    
+    <!-- Splash screens -->
+    <splash src="www/images/splash.png" />
+    <splash src="www/images/splash@2x.png" width="640" height="960" />
+    <splash src="www/images/splash@3x.png" width="750" height="1334" />
+    
     <!-- Android specific -->
     <platform name="android">
+        <!-- Icon for Android -->
+        <icon src="www/images/icon.png" density="ldpi" />
+        <icon src="www/images/icon.png" density="mdpi" />
+        <icon src="www/images/icon.png" density="hdpi" />
+        <icon src="www/images/icon.png" density="xhdpi" />
+        <icon src="www/images/icon.png" density="xxhdpi" />
+        <icon src="www/images/icon.png" density="xxxhdpi" />
+        
+        <!-- Splash screens for Android -->
+        <splash src="www/images/splash.png" density="land-ldpi" />
+        <splash src="www/images/splash.png" density="land-mdpi" />
+        <splash src="www/images/splash.png" density="land-hdpi" />
+        <splash src="www/images/splash.png" density="land-xhdpi" />
+        <splash src="www/images/splash.png" density="land-xxhdpi" />
+        <splash src="www/images/splash.png" density="land-xxxhdpi" />
+        <splash src="www/images/splash.png" density="port-ldpi" />
+        <splash src="www/images/splash.png" density="port-mdpi" />
+        <splash src="www/images/splash.png" density="port-hdpi" />
+        <splash src="www/images/splash.png" density="port-xhdpi" />
+        <splash src="www/images/splash.png" density="port-xxhdpi" />
+        <splash src="www/images/splash.png" density="port-xxxhdpi" />
+        
         <edit-config file="app/src/main/AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application android:usesCleartextTraffic="true" />
         </edit-config>
-        <resource-file src="google-services.json" target="app/google-services.json" />
         
-        <!-- Allow internet and network state permissions -->
         <config-file parent="/*" target="AndroidManifest.xml">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
             <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
             <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
             <uses-permission android:name="android.permission.WAKE_LOCK" />
-            <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-            <uses-permission android:name="android.permission.VIBRATE" />
-        </config-file>
-        
-        <!-- Background service for audio playback -->
-        <config-file parent="/manifest/application" target="AndroidManifest.xml">
-            <service 
-                android:name="de.appplant.cordova.plugin.background.ForegroundService"
-                android:enabled="true"
-                android:exported="false">
-            </service>
-            <receiver android:name="de.appplant.cordova.plugin.background.ForegroundService$Receiver">
-                <intent-filter>
-                    <action android:name="android.intent.action.BOOT_COMPLETED" />
-                </intent-filter>
-            </receiver>
         </config-file>
     </platform>
     
@@ -44,15 +58,8 @@
         <config-file parent="UIBackgroundModes" target="*-Info.plist">
             <array>
                 <string>audio</string>
-                <string>fetch</string>
             </array>
         </config-file>
-        <edit-config target="NSAppTransportSecurity" file="*-Info.plist">
-            <dict>
-                <key>NSAllowsArbitraryLoads</key>
-                <true/>
-            </dict>
-        </edit-config>
     </platform>
     
     <!-- Preferences -->
@@ -63,57 +70,19 @@
     <preference name="AutoHideSplashScreen" value="true" />
     <preference name="SplashScreenDelay" value="3000" />
     <preference name="FadeSplashScreenDuration" value="300" />
-    <preference name="AndroidInsecureFileModeEnabled" value="true" />
-    
-    <!-- For Android 12+ -->
     <preference name="android-targetSdkVersion" value="33" />
     <preference name="android-minSdkVersion" value="22" />
-    <preference name="android-compileSdkVersion" value="33" />
     
     <!-- Allow all external URLs -->
     <allow-navigation href="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
-    <allow-intent href="tel:*" />
-    <allow-intent href="sms:*" />
-    <allow-intent href="mailto:*" />
-    <allow-intent href="geo:*" />
-    
-    <!-- Icons and splash screens -->
-    <icon src="res/icon.png" />
-    <icon src="res/icon@2x.png" width="96" height="96" />
-    <icon src="res/icon@3x.png" width="144" height="144" />
-    
-    <splash src="res/splash.png" />
-    <splash src="res/splash@2x.png" width="640" height="960" />
-    <splash src="res/splash@3x.png" width="750" height="1334" />
     
     <!-- Plugins -->
     <plugin name="cordova-plugin-whitelist" spec="1.3.4" />
     <plugin name="cordova-plugin-statusbar" spec="2.4.3" />
     <plugin name="cordova-plugin-splashscreen" spec="6.0.0" />
     <plugin name="cordova-plugin-insomnia" spec="4.3.0" />
-    <plugin name="cordova-plugin-android-permissions" spec="1.1.2" />
-    <plugin name="cordova-plugin-background-mode" spec="0.7.3" />
     <plugin name="cordova-plugin-media" spec="5.0.3" />
-    <plugin name="cordova-plugin-file" spec="6.0.2" />
-    <plugin name="cordova-plugin-network-information" spec="2.0.2" />
-    <plugin name="cordova-plugin-device" spec="2.0.3" />
-    
-    <!-- For Android 12+ notification compatibility -->
-    <plugin name="cordova-plugin-badge" spec="0.8.8" />
-    <plugin name="cordova-plugin-local-notification" spec="0.9.0-beta.2" />
-    
-    <!-- Push notifications (if needed) -->
-    <!-- <plugin name="phonegap-plugin-push" spec="2.3.0" /> -->
-    
-    <!-- Firebase plugins -->
-    <plugin name="cordova-plugin-firebasex" spec="16.1.0" />
-    
-    <!-- For in-app browser -->
-    <plugin name="cordova-plugin-inappbrowser" spec="5.0.0" />
-    
-    <!-- For audio streaming -->
-    <plugin name="cordova-plugin-streaming-media" spec="2.3.0" />
     
 </widget>
