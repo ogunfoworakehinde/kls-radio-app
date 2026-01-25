@@ -11,92 +11,61 @@ jobs:
     env:
       KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
 
     steps:
-    # -----------------------------
-    # 1. Checkout
-    # -----------------------------
     - name: Checkout code
       uses: actions/checkout@v4
 
-    # -----------------------------
-    # 2. Java (Required by Gradle)
-    # -----------------------------
-    - name: Setup Java 17
+    - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: temurin
         java-version: '17'
 
-    # -----------------------------
-    # 3. Node.js
-    # -----------------------------
-    - name: Setup Node.js 18
+    - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
 
-    # -----------------------------
-    # 4. Install Cordova + deps
-    # -----------------------------
-    - name: Install Cordova and npm deps
+    - name: Install Cordova
       run: |
-        npm install -g cordova@12
+        npm install -g cordova@12.0.0
         npm install
 
-    # -----------------------------
-    # 5. Clean Android build env
-    # -----------------------------
-    - name: Clean Android platform
+    - name: Install Android SDK
       run: |
-        rm -rf platforms/android
-        rm -rf plugins
+        sudo apt-get update
+        sudo apt-get install -y unzip wget lib32z1 lib32stdc++6 lib32ncurses6 lib32gcc-s1
+        wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        unzip cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
+        mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-35" "build-tools;35.0.3"
 
-    # -----------------------------
-    # 6. Add Android platform
-    # -----------------------------
-    - name: Add Android platform
+    - name: Add Android Platform
       run: |
-        cordova platform add android@13.0.0
+        cordova platform add android@13.0.0 --save
 
-    # -----------------------------
-    # 7. Add ONLY SAFE plugins
-    # -----------------------------
-    - name: Add required plugins (AndroidX safe)
+    - name: Add Required Plugins
       run: |
-        cordova plugin add cordova-plugin-network-information
-        cordova plugin add cordova-plugin-splashscreen
-        cordova plugin add cordova-plugin-statusbar
         cordova plugin add cordova-plugin-background-mode
         cordova plugin add cordova-plugin-music-controls2
+        cordova plugin add cordova-plugin-powermanagement
+        cordova plugin add cordova-plugin-android-permissions
 
-    # -----------------------------
-    # 8. Decode signing keystore
-    # -----------------------------
     - name: Decode keystore
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
 
-    # -----------------------------
-    # 9. Build Android AAB (Release)
-    # -----------------------------
     - name: Build Android AAB (Release)
       run: |
-        cordova build android --release -- \
-          --packageType=bundle \
-          --buildConfig build.json
+        cordova build android --release -- --packageType=bundle --buildConfig build.json
 
-    # -----------------------------
-    # 10. Build APK (Debug)
-    # -----------------------------
     - name: Build Android APK (Debug)
       run: |
         cordova build android --debug
 
-    # -----------------------------
-    # 11. Upload artifacts
-    # -----------------------------
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
@@ -108,3 +77,4 @@ jobs:
       with:
         name: kls-radio-debug-apk
         path: platforms/android/app/build/outputs/apk/debug/*.apk
+
