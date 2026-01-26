@@ -6,10 +6,13 @@
   "main": "index.js",
   "author": "Kingdom Lifestyle Radio",
   "license": "Apache-2.0",
-  "devDependencies": {
-    "cordova-android": "^13.0.0"
+  "scripts": {
+    "build:android": "cordova build android",
+    "build:android:release": "cordova build android --release",
+    "run:android": "cordova run android"
   },
   "dependencies": {
+    "cordova-android": "^13.0.0",
     "cordova-plugin-android-permissions": "^1.1.5",
     "cordova-plugin-background-mode": "^0.7.3",
     "cordova-plugin-device": "^3.0.0",
