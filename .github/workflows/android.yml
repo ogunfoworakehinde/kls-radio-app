@@ -15,41 +15,40 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Setup Java 17 (REQUIRED for Cordova Android 13)
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
         
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '11'
-        
-    - name: Install Cordova
+    - name: Install Cordova and dependencies
       run: |
         npm install -g cordova@12.0.0
-        
-    - name: Install dependencies (FIXED - uses npm install not npm ci)
-      run: |
-        # Use npm install instead of npm ci to avoid lock file issues
         npm install
         
-    - name: Ensure Android platform exists
+    - name: Clean and setup Android platform
       run: |
+        # Remove existing platform
         cordova platform rm android --nosave 2>/dev/null || true
+        
+        # Add Android platform with specific Gradle version
         cordova platform add android@13.0.0
         
     - name: Ensure required plugins
       run: |
-        # Remove and re-add plugins to ensure consistency
+        # Remove existing plugins to avoid conflicts
         cordova plugin rm cordova-plugin-media 2>/dev/null || true
         cordova plugin rm cordova-plugin-background-mode 2>/dev/null || true
         cordova plugin rm cordova-plugin-network-information 2>/dev/null || true
         cordova plugin rm cordova-plugin-splashscreen 2>/dev/null || true
         cordova plugin rm cordova-plugin-statusbar 2>/dev/null || true
         
-        # Add required plugins (match what's in package.json)
+        # Add required plugins
         cordova plugin add cordova-plugin-network-information
         cordova plugin add cordova-plugin-splashscreen
         cordova plugin add cordova-plugin-statusbar
@@ -64,57 +63,74 @@ jobs:
         # Verify keystore exists
         if [ -f "klsradio-release.keystore" ]; then
           echo "✅ Keystore restored from GitHub Secrets"
-          ls -la klsradio-release.keystore
+          echo "📄 File size: $(wc -c < klsradio-release.keystore) bytes"
           
-          # Verify keystore can be read
-          keytool -list -v \
-            -keystore klsradio-release.keystore \
-            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-            -alias "${{ secrets.KEY_ALIAS }}" 2>/dev/null | head -20 || echo "⚠️ Could not fully verify keystore"
+          # Quick test to verify keystore
+          if keytool -list -keystore klsradio-release.keystore -storepass "${{ secrets.KEYSTORE_PASSWORD }}" 2>/dev/null | grep -q "keystore"; then
+            echo "🔐 Keystore verified as valid"
+          else
+            echo "⚠️ Could not verify keystore - might be wrong password or corrupted"
+          fi
         else
           echo "❌ ERROR: Keystore not restored!"
           exit 1
         fi
         
+    - name: Set Gradle properties for Java 17
+      run: |
+        # Create or update gradle.properties for Java 17 compatibility
+        echo "org.gradle.java.home=/usr/lib/jvm/temurin-17-jdk-amd64" > platforms/android/gradle.properties
+        echo "android.enableJetifier=true" >> platforms/android/gradle.properties
+        echo "android.useAndroidX=true" >> platforms/android/gradle.properties
+        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> platforms/android/gradle.properties
+        
     - name: Build Android Release AAB
       run: |
-        # Build with the keystore from secrets
-        echo "Building Release AAB..."
-        cordova build android --release -- \
-          --keystore=klsradio-release.keystore \
-          --storePassword="${{ secrets.KEYSTORE_PASSWORD }}" \
-          --alias="${{ secrets.KEY_ALIAS }}" \
-          --password="${{ secrets.KEY_PASSWORD }}" \
-          --packageType=bundle
+        echo "🚀 Building Release AAB (Signed Bundle)..."
+        # Build with explicit Gradle wrapper
+        cd platforms/android
+        ./gradlew bundleRelease -PcdvReleaseSigningPropertiesFile=../../../build.json
+        cd ../..
         
     - name: Build Android Debug APK
       run: |
-        echo "Building Debug APK..."
+        echo "🔧 Building Debug APK..."
         cordova build android
         
-    - name: Get AAB SHA1 fingerprint (VERY IMPORTANT)
+    - name: Get AAB SHA1 fingerprint (CRITICAL CHECK)
       run: |
         # Check the generated AAB's SHA1 to verify it's correct
         AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" | head -1)
         if [ -f "$AAB_FILE" ]; then
-          echo "📱 Generated AAB file: $AAB_FILE"
-          echo "🔐 SHA1 Fingerprint (MUST MATCH Google Play):"
-          keytool -printcert -jarfile "$AAB_FILE" | grep -A1 "SHA1:" || echo "Could not get SHA1"
+          echo "📱 Generated AAB file: $(basename "$AAB_FILE")"
+          echo "📊 File size: $(wc -c < "$AAB_FILE" | numfmt --to=iec) bytes"
+          echo ""
+          echo "🔐 SHA1 FINGERPRINT (MUST MATCH Google Play):"
+          echo "================================================"
+          SHA1_OUTPUT=$(keytool -printcert -jarfile "$AAB_FILE" 2>/dev/null | grep -A1 "SHA1:" | head -2)
+          echo "$SHA1_OUTPUT"
+          echo "================================================"
           
-          # Save SHA1 for reference
-          keytool -printcert -jarfile "$AAB_FILE" | grep "SHA1:" | head -1 | cut -d' ' -f3 > sha1_fingerprint.txt
-          echo "SHA1 saved to sha1_fingerprint.txt"
-          cat sha1_fingerprint.txt
+          # Extract just the SHA1 value
+          SHA1_VALUE=$(echo "$SHA1_OUTPUT" | grep "SHA1:" | head -1 | tr -d ' ' | cut -d':' -f2-)
+          echo "$SHA1_VALUE" > sha1_fingerprint.txt
           
           echo ""
-          echo "🔍 EXPECTED SHA1 from Google Play:"
+          echo "📋 EXPECTED SHA1 from Google Play Console:"
           echo "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4"
           echo ""
-          echo "✅ If SHA1 matches above, upload to Google Play will work!"
-          echo "❌ If SHA1 is different, check your KEYSTORE_BASE64 secret"
+          
+          if [ "$SHA1_VALUE" = "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4" ]; then
+            echo "✅ ✅ ✅ SUCCESS: SHA1 matches! Ready for Google Play upload."
+          else
+            echo "❌ ❌ ❌ WARNING: SHA1 DOES NOT MATCH!"
+            echo "   The keystore in KEYSTORE_BASE64 secret is NOT the original one."
+            echo "   Uploading this to Google Play will FAIL."
+          fi
         else
           echo "❌ No AAB file found!"
-          find platforms/android/app/build/outputs/bundle/release/ -type f 2>/dev/null || echo "Bundle directory not found"
+          # Show what files exist for debugging
+          find platforms/android/app/build/outputs/ -type f 2>/dev/null | head -20 || echo "No build outputs found"
         fi
         
     - name: Upload Release AAB Artifact
@@ -143,9 +159,11 @@ jobs:
       if: always()
       run: |
         echo "=== BUILD SUMMARY ==="
-        echo "✅ Workflow completed"
+        echo "📦 Artifacts generated:"
+        echo "   • android-release-aab: For Google Play Store"
+        echo "   • android-debug-apk: For testing"
+        echo "   • build-info: Contains SHA1 fingerprint"
         echo ""
-        echo "Download artifacts from:"
-        echo "- android-release-aab: For Google Play Store upload"
-        echo "- android-debug-apk: For testing"
-        echo "- build-info: Contains SHA1 fingerprint"
+        echo "⚠️ IMPORTANT: Check SHA1 fingerprint above!"
+        echo "   If it matches expected SHA1, upload to Google Play."
+        echo "   If not, update KEYSTORE_BASE64 secret with ORIGINAL keystore."
