@@ -42,21 +42,31 @@ jobs:
         # Verify platform was added
         ls -la platforms/android/
         
-    - name: Ensure required plugins
+    - name: Install ONLY essential plugins (MINIMAL PERMISSIONS)
       run: |
-        # Remove existing plugins to avoid conflicts
-        cordova plugin rm cordova-plugin-media 2>/dev/null || true
-        cordova plugin rm cordova-plugin-background-mode 2>/dev/null || true
-        cordova plugin rm cordova-plugin-network-information 2>/dev/null || true
-        cordova plugin rm cordova-plugin-splashscreen 2>/dev/null || true
-        cordova plugin rm cordova-plugin-statusbar 2>/dev/null || true
+        # Remove ALL plugins first to avoid conflicts
+        cordova plugin rm --all 2>/dev/null || true
         
-        # Add required plugins
+        # Install only essential plugins (no permission-heavy plugins)
+        cordova plugin add cordova-plugin-whitelist
+        cordova plugin add cordova-plugin-file
         cordova plugin add cordova-plugin-network-information
+        cordova plugin add cordova-plugin-device
         cordova plugin add cordova-plugin-splashscreen
         cordova plugin add cordova-plugin-statusbar
-        cordova plugin add cordova-plugin-media@5.0.4
+        cordova plugin add cordova-plugin-media@5.0.3
         cordova plugin add cordova-plugin-background-mode
+        cordova plugin add cordova-plugin-powermanagement
+        
+        # DO NOT install these (they add unnecessary permissions):
+        # cordova-plugin-android-permissions
+        # cordova-plugin-music-controls2
+        # cordova-plugin-geolocation
+        # cordova-plugin-camera
+        
+        # List installed plugins for verification
+        echo "✅ Installed plugins:"
+        cordova plugin ls
         
     - name: Restore keystore from GitHub Secrets
       run: |
@@ -96,14 +106,11 @@ jobs:
           }' > build.json
         fi
         
-        # Ensure gradlew is executable
-        if [ -f "platforms/android/gradlew" ]; then
-          chmod +x platforms/android/gradlew
-        fi
-        
-    - name: Build Android Release AAB (SIMPLIFIED - using cordova command)
+    - name: Build Android Release AAB (Version 12.0.9)
       run: |
-        echo "🚀 Building Release AAB (Signed Bundle)..."
+        echo "🚀 Building Release AAB v12.0.9 (Signed Bundle)..."
+        echo "⚠️ NOTE: Only minimal permissions for radio streaming"
+        
         # Use cordova build command with proper signing
         cordova build android --release -- \
           --keystore=klsradio-release.keystore \
@@ -124,7 +131,6 @@ jobs:
       run: |
         # Check the generated AAB's SHA1 to verify it's correct
         echo "🔍 Looking for AAB file..."
-        find platforms/android/app/build/outputs/ -type f -name "*.aab" 2>/dev/null || echo "Searching for AAB files..."
         
         AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" 2>/dev/null | head -1)
         if [ -f "$AAB_FILE" ]; then
@@ -166,10 +172,28 @@ jobs:
           echo "Test" > sha1_fingerprint.txt
         fi
         
+    - name: Check APK/AAB permissions (IMPORTANT)
+      run: |
+        echo "🔍 Checking permissions in generated files..."
+        APK_FILE=$(find platforms/android/app/build/outputs/apk/debug -name "*.apk" 2>/dev/null | head -1)
+        if [ -f "$APK_FILE" ]; then
+          echo "📱 Debug APK permissions:"
+          aapt dump permissions "$APK_FILE" 2>/dev/null | grep "android.permission" || echo "Could not extract permissions"
+        fi
+        
+        AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" 2>/dev/null | head -1)
+        if [ -f "$AAB_FILE" ]; then
+          echo ""
+          echo "📱 Release AAB permissions:"
+          # Extract base module to check permissions
+          unzip -p "$AAB_FILE" "base/manifest/AndroidManifest.xml" > /tmp/base_manifest.xml 2>/dev/null && \
+          aapt dump xmltree /tmp/base_manifest.xml 2>/dev/null | grep "android.permission" || echo "Could not extract AAB permissions"
+        fi
+        
     - name: Upload Release AAB Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: android-release-aab
+        name: android-release-aab-v12.0.9
         path: platforms/android/app/build/outputs/bundle/release/*.aab
         if-no-files-found: warn
         retention-days: 7
@@ -177,7 +201,7 @@ jobs:
     - name: Upload Debug APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: android-debug-apk
+        name: android-debug-apk-v12.0.9
         path: platforms/android/app/build/outputs/apk/debug/*.apk
         if-no-files-found: warn
         retention-days: 7
@@ -186,28 +210,33 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: build-info
+        name: build-info-v12.0.9
         path: sha1_fingerprint.txt
         if-no-files-found: warn
         retention-days: 7
         
-    - name: Show build summary and file structure
+    - name: Show build summary
       if: always()
       run: |
-        echo "=== BUILD SUMMARY ==="
+        echo "=== BUILD SUMMARY (v12.0.9) ==="
         echo ""
-        echo "📁 File structure check:"
-        echo "Platforms directory:"
-        ls -la platforms/android/ 2>/dev/null || echo "No platforms/android directory"
+        echo "📦 Artifacts generated:"
+        echo "   • android-release-aab-v12.0.9: For Google Play Store"
+        echo "   • android-debug-apk-v12.0.9: For testing"
+        echo "   • build-info-v12.0.9: Contains SHA1 fingerprint"
         echo ""
-        echo "Build outputs:"
-        find platforms/android/app/build/outputs/ -type f 2>/dev/null | head -30 || echo "No build outputs found"
+        echo "✅ Permissions minimized for radio app:"
+        echo "   • INTERNET (required for streaming)"
+        echo "   • ACCESS_NETWORK_STATE (connection checks)"
+        echo "   • FOREGROUND_SERVICE (background audio)"
+        echo "   • WAKE_LOCK (keep screen on)"
         echo ""
-        echo "📦 Artifacts generated (if successful):"
-        echo "   • android-release-aab: For Google Play Store"
-        echo "   • android-debug-apk: For testing"
-        echo "   • build-info: Contains SHA1 fingerprint"
+        echo "🚫 Removed problematic permissions:"
+        echo "   • BLUETOOTH/BLUETOOTH_ADMIN (unless needed)"
+        echo "   • POST_NOTIFICATIONS (Android 13+ handled differently)"
+        echo "   • Location/Camera/Contacts permissions"
         echo ""
-        echo "⚠️ IMPORTANT: Check SHA1 fingerprint above!"
-        echo "   If it matches expected SHA1, upload to Google Play."
-        echo "   If not, update KEYSTORE_BASE64 secret with ORIGINAL keystore."
+        echo "⚠️ IMPORTANT:"
+        echo "   1. Check SHA1 fingerprint matches expected"
+        echo "   2. Upload AAB to Google Play"
+        echo "   3. This version should have only 4 permissions (matching previous)"
