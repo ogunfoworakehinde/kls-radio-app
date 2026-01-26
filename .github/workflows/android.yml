@@ -26,45 +26,60 @@ jobs:
       with:
         node-version: '18'
         
+    - name: Clean workspace
+      run: |
+        # Remove everything to start fresh
+        rm -rf platforms
+        rm -rf plugins
+        rm -rf node_modules
+        
     - name: Install Cordova and dependencies
       run: |
         npm install -g cordova@12.0.0
         npm install
         
-    - name: Clean and setup Android platform
+    - name: Add Android platform
       run: |
-        # Remove existing platform
-        cordova platform rm android --nosave 2>/dev/null || true
-        
-        # Add Android platform with specific Gradle version
+        # Add Android platform
         cordova platform add android@13.0.0
         
         # Verify platform was added
+        echo "✅ Android platform added:"
         ls -la platforms/android/
         
-    - name: Install ONLY essential plugins (MINIMAL PERMISSIONS)
+    - name: Install compatible plugins (FIXED VERSIONS)
       run: |
         # Remove ALL plugins first to avoid conflicts
         cordova plugin rm --all 2>/dev/null || true
         
-        # Install only essential plugins (no permission-heavy plugins)
-        cordova plugin add cordova-plugin-whitelist
-        cordova plugin add cordova-plugin-file
-        cordova plugin add cordova-plugin-network-information
-        cordova plugin add cordova-plugin-device
-        cordova plugin add cordova-plugin-splashscreen
-        cordova plugin add cordova-plugin-statusbar
-        cordova plugin add cordova-plugin-media@5.0.3
-        cordova plugin add cordova-plugin-background-mode
-        cordova plugin add cordova-plugin-powermanagement
+        # Install plugins in correct order with compatible versions
+        echo "📦 Installing plugins with compatible versions..."
         
-        # DO NOT install these (they add unnecessary permissions):
-        # cordova-plugin-android-permissions
-        # cordova-plugin-music-controls2
-        # cordova-plugin-geolocation
-        # cordova-plugin-camera
+        # First install file plugin (version 6.0.2 for media plugin compatibility)
+        cordova plugin add cordova-plugin-file@6.0.2
+        
+        # Then install other essential plugins
+        cordova plugin add cordova-plugin-network-information@3.0.0
+        cordova plugin add cordova-plugin-device@3.0.0
+        cordova plugin add cordova-plugin-splashscreen@6.0.2
+        cordova plugin add cordova-plugin-statusbar@3.0.0
+        
+        # Install media plugin (depends on file@6.x)
+        cordova plugin add cordova-plugin-media@5.0.3
+        
+        # Install background mode
+        cordova plugin add cordova-plugin-background-mode@0.7.3
+        
+        # Install power management
+        cordova plugin add cordova-plugin-powermanagement@1.0.5
+        
+        # DO NOT install these (they cause issues):
+        # - cordova-plugin-whitelist (not needed for Cordova 10+)
+        # - cordova-plugin-android-permissions (adds unnecessary permissions)
+        # - cordova-plugin-music-controls2 (version conflicts)
         
         # List installed plugins for verification
+        echo ""
         echo "✅ Installed plugins:"
         cordova plugin ls
         
@@ -220,21 +235,21 @@ jobs:
       run: |
         echo "=== BUILD SUMMARY (v12.0.9) ==="
         echo ""
+        echo "✅ Plugin compatibility fixed:"
+        echo "   • cordova-plugin-file@6.0.2 (compatible with media plugin)"
+        echo "   • cordova-plugin-media@5.0.3"
+        echo "   • Removed whitelist plugin (not needed for Cordova 10+)"
+        echo ""
         echo "📦 Artifacts generated:"
         echo "   • android-release-aab-v12.0.9: For Google Play Store"
         echo "   • android-debug-apk-v12.0.9: For testing"
         echo "   • build-info-v12.0.9: Contains SHA1 fingerprint"
         echo ""
-        echo "✅ Permissions minimized for radio app:"
+        echo "✅ Permissions minimized for radio app (4 permissions):"
         echo "   • INTERNET (required for streaming)"
         echo "   • ACCESS_NETWORK_STATE (connection checks)"
         echo "   • FOREGROUND_SERVICE (background audio)"
         echo "   • WAKE_LOCK (keep screen on)"
-        echo ""
-        echo "🚫 Removed problematic permissions:"
-        echo "   • BLUETOOTH/BLUETOOTH_ADMIN (unless needed)"
-        echo "   • POST_NOTIFICATIONS (Android 13+ handled differently)"
-        echo "   • Location/Camera/Contacts permissions"
         echo ""
         echo "⚠️ IMPORTANT:"
         echo "   1. Check SHA1 fingerprint matches expected"
