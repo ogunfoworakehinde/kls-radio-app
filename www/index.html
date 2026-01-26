@@ -2356,6 +2356,7 @@
 <script src="js/index.js"></script>
      
 <!-- Main App Script -->
+<!-- Main App Script -->
 <script>
 // Initialize EmailJS first
 emailjs.init('835HY_wRkYBhqdu7d');
@@ -2367,51 +2368,107 @@ AOS.init({
     once: true
 });
 
-// Initialize Background Audio when DOM is ready
-document.addEventListener('DOMContentLoaded', function() {
-    // Create global background audio instance
-    window.backgroundAudio = new BackgroundAudio();
-    
-    // Create media session controller
-    window.mediaSession = new MediaSessionController();
-    
-    // Link media session events to background audio
-    if (window.mediaSession) {
-        mediaSession.setOnPlay(() => {
-            if (window.backgroundAudio) {
-                window.backgroundAudio.play();
-            }
-        });
-        
-        mediaSession.setOnPause(() => {
-            if (window.backgroundAudio) {
-                window.backgroundAudio.pause();
-            }
-        });
-        
-        mediaSession.setOnStop(() => {
-            if (window.backgroundAudio) {
-                window.backgroundAudio.stop();
-            }
-        });
-        
-        mediaSession.setOnPrevious(() => {
-            if (window.switchChannel) {
-                window.switchChannel(-1);
-            }
-        });
-        
-        mediaSession.setOnNext(() => {
-            if (window.switchChannel) {
-                window.switchChannel(1);
-            }
-        });
-    }
-    
-    console.log('Background audio system initialized');
-});
+// Global state object
+const appState = {
+    currentPage: 'home',
+    radioPlaying: false,
+    radioShouldPlay: true,
+    currentStation: 0,
+    stations: [
+        {
+            name: "English Gospel",
+            url: "https://s3.voscast.com:9425/stream",
+            description: "24/7 English Gospel Music"
+        },
+        {
+            name: "Yoruba Gospel",
+            url: "https://s3.voscast.com:10745/stream",
+            description: "Yoruba Language Worship"
+        },
+        {
+            name: "Praise Worship",
+            url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
+            description: "Contemporary Praise"
+        }
+    ],
+    settings: {
+        theme: 'deep-blue',
+        radioVolume: 1,
+        podcastVolume: 1,
+        autoPlay: true,
+        notifications: true,
+        dataSaver: false
+    },
+    blogPage: 1,
+    blogPerPage: 6,
+    podcastPage: 1,
+    podcastPerPage: 10,
+    allBlogPosts: [],
+    filteredBlogPosts: [],
+    blogSlides: [],
+    currentBlogSlide: 0,
+    blogSlideInterval: null,
+    podcastData: {
+        episodes: [],
+        currentPage: 1,
+        totalPages: 1,
+        totalEpisodes: 0,
+        podcastInfo: {
+            title: "Kingdom Lifestyle Podcast",
+            description: "Welcome to Kingdom Lifestyle Podcast. A platform for the word of Faith, messages, and exhortations capable of lifting up your spirit and nourishing your soul. Join us every Friday and God bless you richly. Amen!"
+        }
+    },
+    currentPodcast: null,
+    radioAutoStarted: false,
+    heroSlides: [],
+    heroCurrentSlide: 0,
+    heroAutoSlideInterval: null,
+    blogPostsCache: {},
+    podcastCache: {},
+    radioReconnectTimeout: null,
+    isReconnecting: false,
+    lastPlayTime: 0,
+    bufferCheckInterval: null
+};
 
-// YOUR EXISTING MAIN SCRIPT STARTS HERE
+// DOM Elements
+const elements = {
+    mainContent: document.getElementById('mainContent'),
+    radioAudio: document.getElementById('radioAudio'),
+    podcastAudio: document.getElementById('podcastAudio'),
+    currentStation: document.getElementById('currentStation'),
+    currentChannel: document.getElementById('currentChannel'),
+    playPauseBtn: document.getElementById('playPauseBtn'),
+    playPauseIcon: document.getElementById('playPauseIcon'),
+    channelSwitcher: document.getElementById('channelSwitcher'),
+    channelMenuBtn: document.getElementById('channelMenuBtn'),
+    prevChannelBtn: document.getElementById('prevChannelBtn'),
+    nextChannelBtn: document.getElementById('nextChannelBtn'),
+    bottomNavItems: document.querySelectorAll('.nav-item'),
+    radioVolume: document.getElementById('radioVolume'),
+    podcastVolume: document.getElementById('podcastVolume'),
+    themeSelect: document.getElementById('themeSelect'),
+    autoPlayToggle: document.getElementById('autoPlayToggle'),
+    notificationsToggle: document.getElementById('notificationsToggle'),
+    dataSaverToggle: document.getElementById('dataSaverToggle'),
+    currentPodcastPlayer: document.getElementById('currentPodcastPlayer'),
+    currentPodcastInfo: document.getElementById('currentPodcastInfo'),
+    podcastList: document.getElementById('podcastList'),
+    podcastLoading: document.getElementById('podcastLoading'),
+    podcastPagination: document.getElementById('podcastPagination'),
+    podcastStats: document.getElementById('podcastStats'),
+    podcastCount: document.getElementById('podcastCount'),
+    moreModal: document.getElementById('moreModal'),
+    blogHeroSlider: document.getElementById('blogHeroSlider'),
+    heroPrevBtn: document.getElementById('heroPrevBtn'),
+    heroNextBtn: document.getElementById('heroNextBtn'),
+    heroDots: document.getElementById('heroDots'),
+    blogPosts: document.getElementById('blogPosts'),
+    blogLoading: document.getElementById('blogLoading'),
+    blogPagination: document.getElementById('blogPagination'),
+    blogSearch: document.getElementById('blogSearch')
+};
+
 // Loading Screen Functionality
 function initLoadingScreen() {
     const loadingScreen = document.getElementById('loadingScreen');
@@ -2461,109 +2518,40 @@ function initLoadingScreen() {
     }, 4000);
 }
 
-// App State - Keep this exactly as it is
-const appState = {
-    currentPage: 'home',
-    radioPlaying: false,
-    radioShouldPlay: true,
-    currentStation: 0,
-    stations: [
-        {
-            name: "English Gospel",
-            url: "https://s3.voscast.com:9425/stream",
-            description: "24/7 English Gospel Music"
-        },
-        {
-            name: "Yoruba Gospel",
-            url: "https://s3.voscast.com:10745/stream",
-            description: "Yoruba Language Worship "
-        },
-        {
-            name: "Praise Worship",
-            url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
-            description: "Contemporary Praise"
-        }
-    ],
-    settings: {
-        theme: 'deep-blue',
-        radioVolume: 1,
-        podcastVolume: 1,
-        autoPlay: true,
-        notifications: true,
-        dataSaver: false
-    },
-    blogPage: 1,
-    blogPerPage: 6,
-    podcastPage: 1,
-    podcastPerPage: 10,
-    allBlogPosts: [],
-    filteredBlogPosts: [],
-    blogSlides: [],
-    currentBlogSlide: 0,
-    blogSlideInterval: null,
-    podcastData: {
-        episodes: [],
-        currentPage: 1,
-        totalPages: 1,
-        totalEpisodes: 0,
-        podcastInfo: {
-            title: "Kingdom Lifestyle Podcast",
-            description: "Welcome to Kingdom Lifestyle Podcast. A platform for the word of Faith, messages, and exhortations capable of lifting up your spirit and nourishing your soul. Join us every Friday and God bless you richly. Amen!"
-        }
-    },
-    currentPodcast: null,
-    radioAutoStarted: false,
-    heroSlides: [],
-    heroCurrentSlide: 0,
-    heroAutoSlideInterval: null,
-    blogPostsCache: {}, // Cache for blog posts
-    podcastCache: {}, // Cache for podcast data
-    // ADDED: Radio reconnection variables - SIMPLIFIED
-    radioReconnectTimeout: null,
-    isReconnecting: false,
-    lastPlayTime: 0,
-    bufferCheckInterval: null
-};
+// Initialize audio system when device is ready
+document.addEventListener('deviceready', function() {
+    console.log('Device ready for audio playback');
+    
+    // Check if cordovaAudio is available (from cordova-background.js)
+    if (window.cordovaAudio) {
+        console.log('Cordova audio service available');
+        // Update appState with cordovaAudio state
+        appState.radioPlaying = window.cordovaAudio.isPlaying;
+        appState.currentStation = window.appState?.currentStation || 0;
+    } else {
+        console.warn('Cordova audio service not available, using fallback');
+    }
+    
+    // Initialize main app
+    if (typeof initMainApp === 'function') {
+        initMainApp();
+    }
+}, false);
 
-// DOM Elements - Keep this exactly as it is
-const elements = {
-    mainContent: document.getElementById('mainContent'),
-    radioAudio: document.getElementById('radioAudio'),
-    podcastAudio: document.getElementById('podcastAudio'),
-    currentStation: document.getElementById('currentStation'),
-    currentChannel: document.getElementById('currentChannel'),
-    playPauseBtn: document.getElementById('playPauseBtn'),
-    playPauseIcon: document.getElementById('playPauseIcon'),
-    channelSwitcher: document.getElementById('channelSwitcher'),
-    channelMenuBtn: document.getElementById('channelMenuBtn'),
-    prevChannelBtn: document.getElementById('prevChannelBtn'),
-    nextChannelBtn: document.getElementById('nextChannelBtn'),
-    bottomNavItems: document.querySelectorAll('.nav-item'),
-    radioVolume: document.getElementById('radioVolume'),
-    podcastVolume: document.getElementById('podcastVolume'),
-    themeSelect: document.getElementById('themeSelect'),
-    autoPlayToggle: document.getElementById('autoPlayToggle'),
-    notificationsToggle: document.getElementById('notificationsToggle'),
-    dataSaverToggle: document.getElementById('dataSaverToggle'),
-    currentPodcastPlayer: document.getElementById('currentPodcastPlayer'),
-    currentPodcastInfo: document.getElementById('currentPodcastInfo'),
-    podcastList: document.getElementById('podcastList'),
-    podcastLoading: document.getElementById('podcastLoading'),
-    podcastPagination: document.getElementById('podcastPagination'),
-    podcastStats: document.getElementById('podcastStats'),
-    podcastCount: document.getElementById('podcastCount'),
-    moreModal: document.getElementById('moreModal'),
-    blogHeroSlider: document.getElementById('blogHeroSlider'),
-    heroPrevBtn: document.getElementById('heroPrevBtn'),
-    heroNextBtn: document.getElementById('heroNextBtn'),
-    heroDots: document.getElementById('heroDots'),
-    blogPosts: document.getElementById('blogPosts'),
-    blogLoading: document.getElementById('blogLoading'),
-    blogPagination: document.getElementById('blogPagination')
-};
+// If cordova not available, still try to initialize
+if (typeof cordova === 'undefined') {
+    console.log('Running in browser mode');
+    setTimeout(function() {
+        if (typeof initMainApp === 'function') {
+            initMainApp();
+        }
+    }, 1000);
+}
 
 // Main App Initialization
 function initMainApp() {
+    console.log('Initializing main app...');
+    
     // Navigation Functions
     function navigateTo(page) {
         // Update state
@@ -2591,10 +2579,14 @@ function initMainApp() {
         history.pushState({ page }, '', `?page=${page}`);
         
         // Close channel switcher if open
-        elements.channelSwitcher.classList.remove('active');
+        if (elements.channelSwitcher) {
+            elements.channelSwitcher.classList.remove('active');
+        }
         
         // Close more modal if open
-        elements.moreModal.classList.remove('active');
+        if (elements.moreModal) {
+            elements.moreModal.classList.remove('active');
+        }
     }
 
     function updateNavigation(page) {
@@ -2608,7 +2600,10 @@ function initMainApp() {
         // Handle "More" tab
         const morePages = ['about', 'donation', 'contact', 'settings'];
         if (morePages.includes(page)) {
-            document.querySelector('.nav-item[data-page="more"]').classList.add('active');
+            const moreItem = document.querySelector('.nav-item[data-page="more"]');
+            if (moreItem) {
+                moreItem.classList.add('active');
+            }
         }
     }
 
@@ -2634,7 +2629,11 @@ function initMainApp() {
     // Home Hero Slider
     function loadHomeHeroSlider() {
         const slider = document.getElementById('homeHeroSlider');
+        if (!slider) return;
+        
         const slides = slider.querySelectorAll('.hero-slide');
+        if (slides.length === 0) return;
+        
         let currentSlide = 0;
         
         function showSlide(index) {
@@ -2651,47 +2650,62 @@ function initMainApp() {
         setInterval(nextSlide, 5000);
     }
 
-    // Radio Functions - UPDATED as per instructions
+    // Radio Functions
     function initRadio() {
         updateRadioDisplay();
         
         // Set initial volume
-        elements.radioAudio.volume = appState.settings.radioVolume;
+        if (elements.radioAudio) {
+            elements.radioAudio.volume = appState.settings.radioVolume;
+        }
         
         // Play/Pause button
-        elements.playPauseBtn.addEventListener('click', toggleRadioPlay);
+        if (elements.playPauseBtn) {
+            elements.playPauseBtn.addEventListener('click', toggleRadioPlay);
+        }
         
         // Channel navigation
-        elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
-        elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
+        if (elements.prevChannelBtn) {
+            elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
+        }
+        
+        if (elements.nextChannelBtn) {
+            elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
+        }
         
         // Channel menu
-        elements.channelMenuBtn.addEventListener('click', toggleChannelSwitcher);
+        if (elements.channelMenuBtn) {
+            elements.channelMenuBtn.addEventListener('click', toggleChannelSwitcher);
+        }
         
         // Channel switcher options
-        document.querySelectorAll('.channel-option').forEach(option => {
-            option.addEventListener('click', function() {
-                const channel = parseInt(this.dataset.channel);
-                if (channel !== appState.currentStation) {
-                    appState.currentStation = channel;
-                    updateRadioDisplay();
-                    updateChannelSwitcher();
-                    if (appState.radioPlaying) {
-                        playRadio();
+        if (elements.channelSwitcher) {
+            document.querySelectorAll('.channel-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const channel = parseInt(this.dataset.channel);
+                    if (channel !== appState.currentStation) {
+                        appState.currentStation = channel;
+                        updateRadioDisplay();
+                        updateChannelSwitcher();
+                        if (appState.radioPlaying) {
+                            playRadio();
+                        }
+                        toggleChannelSwitcher();
                     }
+                });
+            });
+            
+            // Close channel switcher when clicking outside
+            document.addEventListener('click', (e) => {
+                if (elements.channelSwitcher && 
+                    !elements.channelSwitcher.contains(e.target) && 
+                    elements.channelMenuBtn &&
+                    !elements.channelMenuBtn.contains(e.target) &&
+                    elements.channelSwitcher.classList.contains('active')) {
                     toggleChannelSwitcher();
                 }
             });
-        });
-        
-        // Close channel switcher when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!elements.channelSwitcher.contains(e.target) && 
-                !elements.channelMenuBtn.contains(e.target) &&
-                elements.channelSwitcher.classList.contains('active')) {
-                toggleChannelSwitcher();
-            }
-        });
+        }
         
         // Initialize radio event listeners
         initStableRadioEvents();
@@ -2704,134 +2718,158 @@ function initMainApp() {
         }
     }
 
-    // Toggle Radio Play - UPDATED as per instructions
+    // Toggle Radio Play
     function toggleRadioPlay() {
-        if (appState.radioPlaying) {
-            // User intentionally paused
-            appState.radioShouldPlay = false;
-            pauseRadio();
+        console.log('Toggle radio play called');
+        
+        if (window.cordovaAudio) {
+            console.log('Using cordovaAudio, isPlaying:', window.cordovaAudio.isPlaying);
+            if (window.cordovaAudio.isPlaying) {
+                window.cordovaAudio.pause();
+            } else {
+                window.cordovaAudio.play();
+            }
         } else {
-            // User wants to play
-            appState.radioShouldPlay = true;
-            playRadio();
+            console.log('Using HTML5 fallback');
+            // Fallback to HTML5 audio
+            if (appState.radioPlaying) {
+                pauseRadio();
+            } else {
+                playRadio();
+            }
         }
     }
 
-    // Play Radio - UPDATED as per instructions
+    // Play Radio
     function playRadio() {
         const station = appState.stations[appState.currentStation];
+        if (!station) return;
         
-        // Use background audio system if available
-        if (window.backgroundAudio) {
-            window.backgroundAudio.playStation(station);
+        // Use cordova audio if available
+        if (window.cordovaAudio) {
+            window.cordovaAudio.playStation(station);
             appState.radioPlaying = true;
-            elements.playPauseIcon.textContent = 'pause';
-            console.log('Playing via background audio system');
-            showAlert(`Now playing: ${station.name}`);
-        } else {
-            // Fallback to HTML5 audio
-            appState.radioAutoStarted = false;
-            appState.radioShouldPlay = true;
-            
+            updatePlayButton(true);
+            console.log('Playing via cordova audio service');
+            showToast(`Now playing: ${station.name}`);
+            return;
+        }
+        
+        // Fallback to HTML5 audio
+        appState.radioAutoStarted = false;
+        appState.radioShouldPlay = true;
+        
+        if (elements.radioAudio) {
             elements.radioAudio.src = station.url;
             elements.radioAudio.load();
             
             elements.radioAudio.play()
                 .then(() => {
                     appState.radioPlaying = true;
-                    elements.playPauseIcon.textContent = 'pause';
+                    updatePlayButton(true);
                     console.log('Radio playback started (HTML5 fallback)');
-                    showAlert(`Now playing: ${station.name}`);
+                    showToast(`Now playing: ${station.name}`);
                 })
                 .catch(error => {
-                    console.log('Radio: Initial play failed, silent retry...');
+                    console.log('Radio: Initial play failed, silent retry...', error);
                     
                     if (appState.radioShouldPlay) {
                         setTimeout(() => {
-                            elements.radioAudio.play().catch(e => {
-                                console.log('Radio: Retry failed');
-                            });
+                            if (elements.radioAudio) {
+                                elements.radioAudio.play().catch(e => {
+                                    console.log('Radio: Retry failed', e);
+                                });
+                            }
                         }, 1000);
                     }
                 });
         }
     }
 
-    // Pause Radio - UPDATED as per instructions
+    // Pause Radio
     function pauseRadio() {
-        // Try background audio system first
-        if (window.backgroundAudio && window.backgroundAudio.isPlaying) {
-            window.backgroundAudio.pause();
+        // Try cordova audio first
+        if (window.cordovaAudio && window.cordovaAudio.isPlaying) {
+            window.cordovaAudio.pause();
             appState.radioPlaying = false;
-            elements.playPauseIcon.textContent = 'play_arrow';
-            console.log('Paused via background audio');
+            updatePlayButton(false);
+            console.log('Paused via cordova audio');
             return;
         }
         
         // Fallback to HTML5 audio
         appState.radioShouldPlay = false;
-        elements.radioAudio.pause();
+        if (elements.radioAudio) {
+            elements.radioAudio.pause();
+        }
         appState.radioPlaying = false;
-        elements.playPauseIcon.textContent = 'play_arrow';
+        updatePlayButton(false);
         console.log('Radio paused by user');
         
         // Stop buffer monitor if exists
-        if (typeof stopBufferMonitor === 'function') {
-            stopBufferMonitor();
+        if (appState.bufferCheckInterval) {
+            clearInterval(appState.bufferCheckInterval);
+            appState.bufferCheckInterval = null;
         }
     }
 
-    // Play Radio Silently - UPDATED as per instructions
+    // Play Radio Silently
     function playRadioSilently() {
         const station = appState.stations[appState.currentStation];
+        if (!station) return;
         
-        // Use background audio system if available
-        if (window.backgroundAudio) {
-            window.backgroundAudio.playStation(station);
+        // Use cordova audio if available
+        if (window.cordovaAudio) {
+            window.cordovaAudio.playStation(station);
             appState.radioPlaying = true;
             appState.radioAutoStarted = true;
             appState.radioShouldPlay = true;
-            elements.playPauseIcon.textContent = 'pause';
-            console.log('Radio auto-started via background audio');
-        } else {
-            // Fallback to HTML5 audio
-            appState.radioAutoStarted = true;
-            appState.radioShouldPlay = true;
-            
+            updatePlayButton(true);
+            console.log('Radio auto-started via cordova audio');
+            return;
+        }
+        
+        // Fallback to HTML5 audio
+        appState.radioAutoStarted = true;
+        appState.radioShouldPlay = true;
+        
+        if (elements.radioAudio) {
             elements.radioAudio.play()
                 .then(() => {
                     appState.radioPlaying = true;
-                    elements.playPauseIcon.textContent = 'pause';
+                    updatePlayButton(true);
                     console.log('Radio auto-started successfully');
                 })
                 .catch(error => {
-                    console.log('Radio: Auto-play failed, silent retry...');
+                    console.log('Radio: Auto-play failed, silent retry...', error);
                     appState.radioAutoStarted = false;
                     
                     // Silent retry
                     if (appState.radioShouldPlay) {
                         setTimeout(() => {
-                            elements.radioAudio.play().catch(e => {
-                                console.log('Radio: Auto-play retry failed');
-                            });
+                            if (elements.radioAudio) {
+                                elements.radioAudio.play().catch(e => {
+                                    console.log('Radio: Auto-play retry failed', e);
+                                });
+                            }
                         }, 2000);
                     }
                 });
         }
     }
 
-    // Switch Channel - UPDATED as per instructions
+    // Switch Channel
     function switchChannel(direction) {
         appState.currentStation = (appState.currentStation + direction + appState.stations.length) % appState.stations.length;
         updateRadioDisplay();
         updateChannelSwitcher();
         
-        // Update background audio if playing
+        // Update cordova audio if playing
         if (appState.radioPlaying) {
             const station = appState.stations[appState.currentStation];
             
-            if (window.backgroundAudio) {
-                window.backgroundAudio.playStation(station);
+            if (window.cordovaAudio) {
+                window.cordovaAudio.playStation(station);
             } else {
                 // Fallback to HTML5 audio
                 playRadio();
@@ -2839,27 +2877,50 @@ function initMainApp() {
         }
     }
 
-    // Make switchChannel globally accessible for lock screen controls
-    window.switchChannel = switchChannel;
-
-    // Update Radio Display - UPDATED as per instructions
+    // Update Radio Display
     function updateRadioDisplay() {
         const station = appState.stations[appState.currentStation];
-        elements.currentStation.textContent = station.name;
-        elements.currentChannel.textContent = station.description;
+        if (!station) return;
         
-        // Update background audio metadata
-        if (window.backgroundAudio && window.backgroundAudio.currentStation !== station) {
-            window.backgroundAudio.currentStation = station;
-            window.backgroundAudio.updateMusicControls();
+        if (elements.currentStation) {
+            elements.currentStation.textContent = station.name;
+        }
+        
+        if (elements.currentChannel) {
+            elements.currentChannel.textContent = station.description;
+        }
+        
+        // Update cordova audio metadata
+        if (window.cordovaAudio && window.cordovaAudio.currentStation !== station) {
+            window.cordovaAudio.currentStation = station;
+            window.cordovaAudio.updateNotification();
         }
         
         // Set audio source for HTML5 fallback
-        elements.radioAudio.src = station.url;
+        if (elements.radioAudio) {
+            elements.radioAudio.src = station.url;
+        }
     }
 
-    // NEW: Ultra-stable radio event handling
+    // Update Play Button
+    function updatePlayButton(isPlaying) {
+        if (elements.playPauseBtn && elements.playPauseIcon) {
+            if (isPlaying) {
+                elements.playPauseIcon.textContent = 'pause';
+                elements.playPauseBtn.classList.add('playing');
+            } else {
+                elements.playPauseIcon.textContent = 'play_arrow';
+                elements.playPauseBtn.classList.remove('playing');
+            }
+        }
+        
+        appState.radioPlaying = isPlaying;
+    }
+
+    // Ultra-stable radio event handling
     function initStableRadioEvents() {
+        if (!elements.radioAudio) return;
+        
         // Clear any existing timeouts
         if (appState.radioReconnectTimeout) {
             clearTimeout(appState.radioReconnectTimeout);
@@ -2869,14 +2930,17 @@ function initMainApp() {
         }
         
         // Reset audio element
-        elements.radioAudio.src = appState.stations[appState.currentStation].url;
-        elements.radioAudio.load();
+        const station = appState.stations[appState.currentStation];
+        if (station) {
+            elements.radioAudio.src = station.url;
+            elements.radioAudio.load();
+        }
         
         // SIMPLIFIED EVENT HANDLERS - NO ERROR POPUPS
         elements.radioAudio.addEventListener('playing', () => {
             appState.radioPlaying = true;
             appState.isReconnecting = false;
-            elements.playPauseIcon.textContent = 'pause';
+            updatePlayButton(true);
             appState.lastPlayTime = Date.now();
             console.log('Radio: Playing smoothly');
             
@@ -2888,7 +2952,7 @@ function initMainApp() {
             // Only update UI if user intentionally paused
             if (!appState.radioShouldPlay) {
                 appState.radioPlaying = false;
-                elements.playPauseIcon.textContent = 'play_arrow';
+                updatePlayButton(false);
                 console.log('Radio: User paused');
                 
                 // Stop buffer monitoring when user pauses
@@ -2916,7 +2980,7 @@ function initMainApp() {
         
         // SILENT ERROR HANDLING - NO POPUPS
         elements.radioAudio.addEventListener('error', (e) => {
-            console.log('Radio: Error detected (silent recovery)');
+            console.log('Radio: Error detected (silent recovery)', e);
             
             // Clear any existing reconnection
             if (appState.radioReconnectTimeout) {
@@ -2984,9 +3048,9 @@ function initMainApp() {
         });
     }
 
-    // NEW: Silent reconnect - NO USER NOTIFICATIONS
+    // Silent reconnect - NO USER NOTIFICATIONS
     function silentReconnect() {
-        if (appState.isReconnecting) return;
+        if (appState.isReconnecting || !elements.radioAudio) return;
         
         appState.isReconnecting = true;
         console.log('Radio: Attempting silent reconnect...');
@@ -3011,7 +3075,7 @@ function initMainApp() {
                         appState.isReconnecting = false;
                     })
                     .catch(error => {
-                        console.log('Radio: Silent reconnect failed, will retry...');
+                        console.log('Radio: Silent reconnect failed, will retry...', error);
                         appState.isReconnecting = false;
                         
                         // Retry with exponential backoff
@@ -3029,7 +3093,7 @@ function initMainApp() {
         }, 500);
     }
 
-    // NEW: Buffer monitoring for smooth playback
+    // Buffer monitoring for smooth playback
     function startBufferMonitor() {
         stopBufferMonitor();
         
@@ -3067,7 +3131,9 @@ function initMainApp() {
     }
 
     function toggleChannelSwitcher() {
-        elements.channelSwitcher.classList.toggle('active');
+        if (elements.channelSwitcher) {
+            elements.channelSwitcher.classList.toggle('active');
+        }
     }
 
     function updateChannelSwitcher() {
@@ -3078,20 +3144,23 @@ function initMainApp() {
 
     // More Modal Functions
     function toggleMoreModal() {
-        elements.moreModal.classList.toggle('active');
-        
-        // Close when clicking outside
-        if (elements.moreModal.classList.contains('active')) {
-            setTimeout(() => {
-                const closeHandler = (e) => {
-                    if (!elements.moreModal.contains(e.target) && 
-                        !document.querySelector('.nav-item[data-page="more"]').contains(e.target)) {
-                        elements.moreModal.classList.remove('active');
-                        document.removeEventListener('click', closeHandler);
-                    }
-                };
-                document.addEventListener('click', closeHandler);
-            }, 0);
+        if (elements.moreModal) {
+            elements.moreModal.classList.toggle('active');
+            
+            // Close when clicking outside
+            if (elements.moreModal.classList.contains('active')) {
+                setTimeout(() => {
+                    const closeHandler = (e) => {
+                        if (elements.moreModal && 
+                            !elements.moreModal.contains(e.target) && 
+                            !document.querySelector('.nav-item[data-page="more"]').contains(e.target)) {
+                            elements.moreModal.classList.remove('active');
+                            document.removeEventListener('click', closeHandler);
+                        }
+                    };
+                    document.addEventListener('click', closeHandler);
+                }, 0);
+            }
         }
     }
 
@@ -3104,12 +3173,24 @@ function initMainApp() {
         }
         
         // Update UI with current settings
-        elements.themeSelect.value = appState.settings.theme;
-        elements.radioVolume.value = appState.settings.radioVolume;
-        elements.podcastVolume.value = appState.settings.podcastVolume;
-        elements.autoPlayToggle.checked = appState.settings.autoPlay;
-        elements.notificationsToggle.checked = appState.settings.notifications;
-        elements.dataSaverToggle.checked = appState.settings.dataSaver;
+        if (elements.themeSelect) {
+            elements.themeSelect.value = appState.settings.theme;
+        }
+        if (elements.radioVolume) {
+            elements.radioVolume.value = appState.settings.radioVolume;
+        }
+        if (elements.podcastVolume) {
+            elements.podcastVolume.value = appState.settings.podcastVolume;
+        }
+        if (elements.autoPlayToggle) {
+            elements.autoPlayToggle.checked = appState.settings.autoPlay;
+        }
+        if (elements.notificationsToggle) {
+            elements.notificationsToggle.checked = appState.settings.notifications;
+        }
+        if (elements.dataSaverToggle) {
+            elements.dataSaverToggle.checked = appState.settings.dataSaver;
+        }
         
         // Apply theme
         applyTheme(appState.settings.theme);
@@ -3117,20 +3198,36 @@ function initMainApp() {
 
     function saveSettings() {
         // Update settings from UI
-        appState.settings.theme = elements.themeSelect.value;
-        appState.settings.radioVolume = parseFloat(elements.radioVolume.value);
-        appState.settings.podcastVolume = parseFloat(elements.podcastVolume.value);
-        appState.settings.autoPlay = elements.autoPlayToggle.checked;
-        appState.settings.notifications = elements.notificationsToggle.checked;
-        appState.settings.dataSaver = elements.dataSaverToggle.checked;
+        if (elements.themeSelect) {
+            appState.settings.theme = elements.themeSelect.value;
+        }
+        if (elements.radioVolume) {
+            appState.settings.radioVolume = parseFloat(elements.radioVolume.value);
+        }
+        if (elements.podcastVolume) {
+            appState.settings.podcastVolume = parseFloat(elements.podcastVolume.value);
+        }
+        if (elements.autoPlayToggle) {
+            appState.settings.autoPlay = elements.autoPlayToggle.checked;
+        }
+        if (elements.notificationsToggle) {
+            appState.settings.notifications = elements.notificationsToggle.checked;
+        }
+        if (elements.dataSaverToggle) {
+            appState.settings.dataSaver = elements.dataSaverToggle.checked;
+        }
         
         // Save to localStorage
         localStorage.setItem('klsr_settings', JSON.stringify(appState.settings));
         
         // Apply changes
         applyTheme(appState.settings.theme);
-        elements.radioAudio.volume = appState.settings.radioVolume;
-        elements.podcastAudio.volume = appState.settings.podcastVolume;
+        if (elements.radioAudio) {
+            elements.radioAudio.volume = appState.settings.radioVolume;
+        }
+        if (elements.podcastAudio) {
+            elements.podcastAudio.volume = appState.settings.podcastVolume;
+        }
         
         showAlert('Settings saved successfully!');
         
@@ -3159,13 +3256,13 @@ function initMainApp() {
 
     function applyTheme(theme) {
         // Remove all theme classes
-        document.body.classList.remove('theme-deep-blue', 'theme-dark' );
+        document.body.classList.remove('theme-deep-blue', 'theme-dark');
         
         // Add selected theme class
         document.body.classList.add(`theme-${theme}`);
     }
 
-    // Blog Hero Slider Functions - ULTRA FAST LOADING
+    // Blog Hero Slider Functions
     async function loadHeroSlider() {
         if (!elements.blogHeroSlider) return;
         
@@ -3206,9 +3303,9 @@ function initMainApp() {
             
             // Fetch with timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
             
-            // Load only 3 latest posts with minimal data
+            // Load only 3 latest posts
             const response = await fetch(
                 'https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts?per_page=3&_fields=id,title,date,excerpt,featured_media,_links&_embed',
                 { signal: controller.signal }
@@ -3265,7 +3362,9 @@ function initMainApp() {
     function renderHeroSlider(posts) {
         // Clear existing content
         elements.blogHeroSlider.innerHTML = '';
-        elements.heroDots.innerHTML = '';
+        if (elements.heroDots) {
+            elements.heroDots.innerHTML = '';
+        }
         appState.heroSlides = [];
         
         // If no posts, show placeholder
@@ -3290,15 +3389,6 @@ function initMainApp() {
             `;
             return;
         }
-        
-        // Preload images
-        posts.forEach(post => {
-            const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
-            if (image) {
-                const img = new Image();
-                img.src = image;
-            }
-        });
         
         // Create slides
         posts.forEach((post, index) => {
@@ -3398,28 +3488,34 @@ function initMainApp() {
             appState.heroSlides.push(slide);
             
             // Create dot
-            const dot = document.createElement('button');
-            dot.className = 'hero-dot';
-            dot.style.cssText = `
-                width: 12px;
-                height: 12px;
-                border-radius: 50%;
-                border: 2px solid white;
-                background: ${index === 0 ? 'white' : 'transparent'};
-                cursor: pointer;
-                transition: all 0.3s ease;
-                padding: 0;
-            `;
-            dot.onclick = () => showHeroSlide(index);
-            elements.heroDots.appendChild(dot);
+            if (elements.heroDots) {
+                const dot = document.createElement('button');
+                dot.className = 'hero-dot';
+                dot.style.cssText = `
+                    width: 12px;
+                    height: 12px;
+                    border-radius: 50%;
+                    border: 2px solid white;
+                    background: ${index === 0 ? 'white' : 'transparent'};
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    padding: 0;
+                `;
+                dot.onclick = () => showHeroSlide(index);
+                elements.heroDots.appendChild(dot);
+            }
         });
         
         // Initialize carousel
         appState.heroCurrentSlide = 0;
         
         // Set up navigation
-        elements.heroNextBtn.onclick = nextHeroSlide;
-        elements.heroPrevBtn.onclick = prevHeroSlide;
+        if (elements.heroNextBtn) {
+            elements.heroNextBtn.onclick = nextHeroSlide;
+        }
+        if (elements.heroPrevBtn) {
+            elements.heroPrevBtn.onclick = prevHeroSlide;
+        }
         
         // Start auto-sliding
         startAutoSlide();
@@ -3476,17 +3572,23 @@ function initMainApp() {
         if (appState.heroSlides.length > 0) {
             appState.heroAutoSlideInterval = setInterval(() => {
                 nextHeroSlide();
-            }, 4000); // Change slide every 4 seconds
+            }, 4000);
         }
     }
 
-    // Blog Posts with Pagination - FIXED
+    // Blog Posts with Pagination
     async function loadBlogPosts(page = 1) {
         if (!elements.blogPosts || !elements.blogLoading) return;
         
-        elements.blogLoading.style.display = 'flex';
-        elements.blogPosts.style.display = 'none';
-        elements.blogPagination.innerHTML = '';
+        if (elements.blogLoading) {
+            elements.blogLoading.style.display = 'flex';
+        }
+        if (elements.blogPosts) {
+            elements.blogPosts.style.display = 'none';
+        }
+        if (elements.blogPagination) {
+            elements.blogPagination.innerHTML = '';
+        }
         
         try {
             // Check cache first
@@ -3505,7 +3607,7 @@ function initMainApp() {
             
             // Fetch with timeout
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
             
             const response = await fetch(
                 `https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts?per_page=${appState.blogPerPage}&page=${page}&_embed`,
@@ -3530,12 +3632,14 @@ function initMainApp() {
             
         } catch (error) {
             console.error('Error loading blog posts:', error);
-            elements.blogLoading.innerHTML = `
-                <div class="alert alert-error">
-                    <p>Unable to load blog posts. Please check your connection and try again.</p>
-                    <button class="mdc-button mt-2" onclick="loadBlogPosts(${page})">Retry</button>
-                </div>
-            `;
+            if (elements.blogLoading) {
+                elements.blogLoading.innerHTML = `
+                    <div class="alert alert-error">
+                        <p>Unable to load blog posts. Please check your connection and try again.</p>
+                        <button class="mdc-button mt-2" onclick="loadBlogPosts(${page})">Retry</button>
+                    </div>
+                `;
+            }
         }
     }
 
@@ -3543,6 +3647,8 @@ function initMainApp() {
         appState.allBlogPosts = posts;
         appState.filteredBlogPosts = posts;
         appState.blogPage = currentPage;
+        
+        if (!elements.blogPosts) return;
         
         if (posts.length === 0) {
             elements.blogPosts.innerHTML = `
@@ -3577,70 +3683,27 @@ function initMainApp() {
             }).join('');
         }
         
-        elements.blogLoading.style.display = 'none';
-        elements.blogPosts.style.display = 'grid';
+        if (elements.blogLoading) {
+            elements.blogLoading.style.display = 'none';
+        }
+        if (elements.blogPosts) {
+            elements.blogPosts.style.display = 'grid';
+        }
         
         // Render pagination if there are multiple pages
-        if (totalPages > 1) {
+        if (totalPages > 1 && elements.blogPagination) {
             renderPagination('blogPagination', currentPage, totalPages, (p) => {
                 loadBlogPosts(p);
             });
         }
     }
 
-    // Blog Pagination Function
-    function renderBlogPagination(currentPage, totalPages) {
-        const container = document.getElementById('blogPagination');
-        if (!container || totalPages <= 1) {
-            container.innerHTML = '';
-            return;
-        }
-        
-        let paginationHtml = '';
-        
-        // Previous button
-        if (currentPage > 1) {
-            paginationHtml += `
-                <button class="page-btn" onclick="loadBlogPosts(${currentPage - 1})">
-                    <i class="material-icons">chevron_left</i>
-                </button>
-            `;
-        }
-        
-        // Page numbers
-        const maxVisible = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-        
-        if (endPage - startPage + 1 < maxVisible) {
-            startPage = Math.max(1, endPage - maxVisible + 1);
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-            paginationHtml += `
-                <button class="page-btn ${i === currentPage ? 'active' : ''}" 
-                        onclick="loadBlogPosts(${i})">
-                    ${i}
-                </button>
-            `;
-        }
-        
-        // Next button
-        if (currentPage < totalPages) {
-            paginationHtml += `
-                <button class="page-btn" onclick="loadBlogPosts(${currentPage + 1})">
-                    <i class="material-icons">chevron_right</i>
-                </button>
-            `;
-        }
-        
-        container.innerHTML = paginationHtml;
-    }
-
     async function loadSinglePost(postId) {
         navigateTo('single-blog');
         
         const container = document.getElementById('singlePostContent');
+        if (!container) return;
+        
         container.innerHTML = `
             <div class="loading-spinner">
                 <div class="spinner"></div>
@@ -3692,6 +3755,8 @@ function initMainApp() {
 
     function renderSinglePost(post) {
         const container = document.getElementById('singlePostContent');
+        if (!container) return;
+        
         const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
         const date = new Date(post.date).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -3800,7 +3865,9 @@ function initMainApp() {
     }
 
     function searchBlogPosts() {
-        const searchTerm = document.getElementById('blogSearch').value.toLowerCase();
+        if (!elements.blogSearch) return;
+        
+        const searchTerm = elements.blogSearch.value.toLowerCase();
         if (!searchTerm) {
             appState.filteredBlogPosts = appState.allBlogPosts;
         } else {
@@ -3814,6 +3881,8 @@ function initMainApp() {
 
     function displayFilteredBlogPosts() {
         const container = document.getElementById('blogPosts');
+        if (!container) return;
+        
         if (appState.filteredBlogPosts.length === 0) {
             container.innerHTML = `
                 <div class="alert" style="grid-column: 1 / -1;">
@@ -3849,15 +3918,22 @@ function initMainApp() {
         }).join('');
         
         // Hide pagination for search results
-        document.getElementById('blogPagination').innerHTML = '';
+        const pagination = document.getElementById('blogPagination');
+        if (pagination) {
+            pagination.innerHTML = '';
+        }
     }
 
-    // PODCAST FUNCTIONS with PAGINATION FIXED
+    // PODCAST FUNCTIONS
     async function loadPodcasts(page = 1) {
+        if (!elements.podcastLoading || !elements.podcastList || !elements.podcastPagination) return;
+        
         elements.podcastLoading.style.display = 'flex';
         elements.podcastList.style.display = 'none';
         elements.podcastPagination.style.display = 'none';
-        elements.currentPodcastPlayer.style.display = 'none';
+        if (elements.currentPodcastPlayer) {
+            elements.currentPodcastPlayer.style.display = 'none';
+        }
         
         try {
             // Use your RSS feed URL
@@ -3883,7 +3959,7 @@ function initMainApp() {
             if (allEpisodes.length === 0) {
                 // Fetch RSS XML with timeout
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 15000);
                 
                 const response = await fetch(rssUrl, { signal: controller.signal })
                     .finally(() => clearTimeout(timeoutId));
@@ -4024,6 +4100,8 @@ function initMainApp() {
         const pageEpisodes = allEpisodes.slice(start, end);
         
         // Display podcast list
+        if (!elements.podcastList) return;
+        
         if (pageEpisodes.length === 0) {
             elements.podcastList.innerHTML = `
                 <div class="alert" style="width: 100%;">
@@ -4062,65 +4140,20 @@ function initMainApp() {
         }
         
         // Show elements
-        elements.podcastLoading.style.display = 'none';
-        elements.podcastList.style.display = 'block';
+        if (elements.podcastLoading) {
+            elements.podcastLoading.style.display = 'none';
+        }
+        if (elements.podcastList) {
+            elements.podcastList.style.display = 'block';
+        }
         
         // Render pagination if needed
-        if (totalPages > 1) {
+        if (totalPages > 1 && elements.podcastPagination) {
             elements.podcastPagination.style.display = 'flex';
             renderPagination('podcastPagination', currentPage, totalPages, (p) => {
                 loadPodcasts(p);
             });
         }
-    }
-
-    // Podcast Pagination Function
-    function renderPodcastPagination(currentPage, totalPages) {
-        const container = document.getElementById('podcastPagination');
-        if (!container || totalPages <= 1) {
-            container.innerHTML = '';
-            return;
-        }
-        
-        let paginationHtml = '';
-        
-        // Previous button
-        if (currentPage > 1) {
-            paginationHtml += `
-                <button class="page-btn" onclick="loadPodcasts(${currentPage - 1})">
-                    <i class="material-icons">chevron_left</i>
-                </button>
-            `;
-        }
-        
-        // Page numbers
-        const maxVisible = 5;
-        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-        
-        if (endPage - startPage + 1 < maxVisible) {
-            startPage = Math.max(1, endPage - maxVisible + 1);
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-            paginationHtml += `
-                <button class="page-btn ${i === currentPage ? 'active' : ''}" 
-                        onclick="loadPodcasts(${i})">
-                    ${i}
-                </button>
-            `;
-        }
-        
-        // Next button
-        if (currentPage < totalPages) {
-            paginationHtml += `
-                <button class="page-btn" onclick="loadPodcasts(${currentPage + 1})">
-                    <i class="material-icons">chevron_right</i>
-                </button>
-            `;
-        }
-        
-        container.innerHTML = paginationHtml;
     }
 
     function playPodcast(podcastId) {
@@ -4133,33 +4166,41 @@ function initMainApp() {
         appState.currentPodcast = podcast;
         
         // Update player display
-        elements.currentPodcastPlayer.style.display = 'block';
-        elements.currentPodcastInfo.innerHTML = `
-            <h4>${podcast.title}</h4>
-            <p>${podcast.fullDescription || podcast.description}</p>
-            <div class="podcast-meta">
-                <span><i class="material-icons">calendar_today</i> ${new Date(podcast.pubDate).toLocaleDateString()}</span>
-                ${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}
-                <span><i class="material-icons">person</i> ${podcast.author}</span>
-            </div>
-        `;
+        if (elements.currentPodcastPlayer) {
+            elements.currentPodcastPlayer.style.display = 'block';
+        }
+        if (elements.currentPodcastInfo) {
+            elements.currentPodcastInfo.innerHTML = `
+                <h4>${podcast.title}</h4>
+                <p>${podcast.fullDescription || podcast.description}</p>
+                <div class="podcast-meta">
+                    <span><i class="material-icons">calendar_today</i> ${new Date(podcast.pubDate).toLocaleDateString()}</span>
+                    ${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}
+                    <span><i class="material-icons">person</i> ${podcast.author}</span>
+                </div>
+            `;
+        }
         
         // Set audio source and play
-        elements.podcastAudio.src = podcast.audio;
-        elements.podcastAudio.volume = appState.settings.podcastVolume;
-        
-        elements.podcastAudio.play()
-            .then(() => showAlert(`Now playing: ${podcast.title}`))
-            .catch(e => {
-                console.error('Playback error:', e);
-            });
+        if (elements.podcastAudio) {
+            elements.podcastAudio.src = podcast.audio;
+            elements.podcastAudio.volume = appState.settings.podcastVolume;
+            
+            elements.podcastAudio.play()
+                .then(() => showAlert(`Now playing: ${podcast.title}`))
+                .catch(e => {
+                    console.error('Playback error:', e);
+                });
+        }
     }
 
     // Generic Pagination Function
     function renderPagination(containerId, currentPage, totalPages, callback) {
         const container = document.getElementById(containerId);
         if (!container || totalPages <= 1) {
-            container.innerHTML = '';
+            if (container) {
+                container.innerHTML = '';
+            }
             return;
         }
         
@@ -4216,10 +4257,12 @@ function initMainApp() {
         `;
         
         const mainContent = document.querySelector('.main-content');
-        if (mainContent.firstChild) {
-            mainContent.insertBefore(alertDiv, mainContent.firstChild);
-        } else {
-            mainContent.appendChild(alertDiv);
+        if (mainContent) {
+            if (mainContent.firstChild) {
+                mainContent.insertBefore(alertDiv, mainContent.firstChild);
+            } else {
+                mainContent.appendChild(alertDiv);
+            }
         }
         
         setTimeout(() => {
@@ -4236,67 +4279,73 @@ function initMainApp() {
     }
 
     // Form Handlers
-    document.getElementById('prayerForm')?.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = {
-            name: document.getElementById('prayerName').value,
-            email: document.getElementById('prayerEmail').value,
-            phone: document.getElementById('prayerPhone').value,
-            request: document.getElementById('prayerRequest').value,
-            followup: document.getElementById('prayerFollowup').checked
-        };
-        
-        try {
-            await emailjs.send('service_bg462kr', 'template_6pyapsf', {
-                to_email: 'support@kingdomlifestyleradio.com',
-                from_name: formData.name,
-                from_email: formData.email,
-                phone: formData.phone,
-                message: formData.request,
-                followup: formData.followup ? 'Yes' : 'No'
-            });
+    const prayerForm = document.getElementById('prayerForm');
+    if (prayerForm) {
+        prayerForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            showAlert('Prayer request submitted! Our team will pray for you.');
-            this.reset();
+            const formData = {
+                name: document.getElementById('prayerName')?.value || '',
+                email: document.getElementById('prayerEmail')?.value || '',
+                phone: document.getElementById('prayerPhone')?.value || '',
+                request: document.getElementById('prayerRequest')?.value || '',
+                followup: document.getElementById('prayerFollowup')?.checked || false
+            };
             
-        } catch (error) {
-            console.error('Email error:', error);
-            showAlert('Thank you for your prayer request. Our team will pray for you.', 'success');
-            this.reset();
-        }
-    });
+            try {
+                await emailjs.send('service_bg462kr', 'template_6pyapsf', {
+                    to_email: 'support@kingdomlifestyleradio.com',
+                    from_name: formData.name,
+                    from_email: formData.email,
+                    phone: formData.phone,
+                    message: formData.request,
+                    followup: formData.followup ? 'Yes' : 'No'
+                });
+                
+                showAlert('Prayer request submitted! Our team will pray for you.');
+                this.reset();
+                
+            } catch (error) {
+                console.error('Email error:', error);
+                showAlert('Thank you for your prayer request. Our team will pray for you.', 'success');
+                this.reset();
+            }
+        });
+    }
 
-    document.getElementById('contactForm')?.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const formData = {
-            name: document.getElementById('contactName').value,
-            email: document.getElementById('contactEmail').value,
-            subject: document.getElementById('contactSubject').value,
-            message: document.getElementById('contactMessage').value
-        };
-        
-        try {
-            await emailjs.send('service_bg462kr', 'template_6pyapsf', {
-                to_email: 'robinlaura101@gmail.com',
-                from_name: formData.name,
-                from_email: formData.email,
-                subject: formData.subject,
-                message: formData.message
-            });
+    const contactForm = document.getElementById('contactForm');
+    if (contactForm) {
+        contactForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            showAlert('Message sent! We\'ll get back to you soon.');
-            this.reset();
+            const formData = {
+                name: document.getElementById('contactName')?.value || '',
+                email: document.getElementById('contactEmail')?.value || '',
+                subject: document.getElementById('contactSubject')?.value || '',
+                message: document.getElementById('contactMessage')?.value || ''
+            };
             
-        } catch (error) {
-            console.error('Email error:', error);
-            showAlert('Thank you for your message. We\'ll be in touch soon.', 'success');
-            this.reset();
-        }
-    });
+            try {
+                await emailjs.send('service_bg462kr', 'template_6pyapsf', {
+                    to_email: 'robinlaura101@gmail.com',
+                    from_name: formData.name,
+                    from_email: formData.email,
+                    subject: formData.subject,
+                    message: formData.message
+                });
+                
+                showAlert('Message sent! We\'ll get back to you soon.');
+                this.reset();
+                
+            } catch (error) {
+                console.error('Email error:', error);
+                showAlert('Thank you for your message. We\'ll be in touch soon.', 'success');
+                this.reset();
+            }
+        });
+    }
 
-    // Performance Optimizations - CACHES FEATURES
+    // Performance Optimizations
     function setupPerformanceOptimizations() {
         // Service Worker for caching (if supported)
         if ('serviceWorker' in navigator) {
@@ -4386,33 +4435,50 @@ function initMainApp() {
         });
         
         // Settings button in header
-        document.getElementById('settingsBtn').addEventListener('click', () => {
-            navigateTo('settings');
-        });
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => {
+                navigateTo('settings');
+            });
+        }
         
         // Search button
-        document.getElementById('searchBtn').addEventListener('click', () => {
-            navigateTo('blog');
-            setTimeout(() => {
-                document.getElementById('blogSearch').focus();
-            }, 300);
-        });
+        const searchBtn = document.getElementById('searchBtn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                navigateTo('blog');
+                setTimeout(() => {
+                    const blogSearch = document.getElementById('blogSearch');
+                    if (blogSearch) {
+                        blogSearch.focus();
+                    }
+                }, 300);
+            });
+        }
         
-        // Volume controls - UPDATED as per instructions
-        elements.radioVolume.addEventListener('input', function() {
-            appState.settings.radioVolume = parseFloat(this.value);
-            elements.radioAudio.volume = appState.settings.radioVolume;
-            
-            // Also update background audio volume if available
-            if (window.backgroundAudio && window.backgroundAudio.currentMedia) {
-                window.backgroundAudio.currentMedia.volume = appState.settings.radioVolume;
-            }
-        });
+        // Volume controls
+        if (elements.radioVolume) {
+            elements.radioVolume.addEventListener('input', function() {
+                appState.settings.radioVolume = parseFloat(this.value);
+                if (elements.radioAudio) {
+                    elements.radioAudio.volume = appState.settings.radioVolume;
+                }
+                
+                // Also update cordova audio volume if available
+                if (window.cordovaAudio && window.cordovaAudio.audio) {
+                    window.cordovaAudio.audio.volume = appState.settings.radioVolume;
+                }
+            });
+        }
         
-        elements.podcastVolume.addEventListener('input', function() {
-            appState.settings.podcastVolume = parseFloat(this.value);
-            elements.podcastAudio.volume = appState.settings.podcastVolume;
-        });
+        if (elements.podcastVolume) {
+            elements.podcastVolume.addEventListener('input', function() {
+                appState.settings.podcastVolume = parseFloat(this.value);
+                if (elements.podcastAudio) {
+                    elements.podcastAudio.volume = appState.settings.podcastVolume;
+                }
+            });
+        }
         
         // Handle URL parameters
         const urlParams = new URLSearchParams(window.location.search);
@@ -4450,6 +4516,9 @@ function initMainApp() {
     window.loadHeroSlider = loadHeroSlider;
     window.loadBlogPosts = loadBlogPosts;
     window.loadPodcasts = loadPodcasts;
+    window.updateRadioDisplay = updateRadioDisplay;
+    window.updatePlayButton = updatePlayButton;
+    window.switchChannel = switchChannel;
 
     // Setup event listeners
     setupEventListeners();
@@ -4462,6 +4531,48 @@ function initMainApp() {
 
 // Start the loading screen when page loads
 document.addEventListener('DOMContentLoaded', initLoadingScreen);
+
+// If DOM is already loaded, initialize immediately
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(initLoadingScreen, 1);
+}
+</script>
+
+<!-- Ensure cordova-background.js functions are available -->
+<script>
+// Global function to update play button from cordova-background.js
+if (typeof window.cordovaAudio !== 'undefined') {
+    // Override the updatePlayButton to sync with cordovaAudio
+    const originalUpdatePlayButton = window.updatePlayButton;
+    window.updatePlayButton = function(isPlaying) {
+        if (originalUpdatePlayButton) {
+            originalUpdatePlayButton(isPlaying);
+        }
+        
+        // Also update cordovaAudio state
+        if (window.cordovaAudio) {
+            window.cordovaAudio.isPlaying = isPlaying;
+            window.cordovaAudio.updateNotification();
+        }
+    };
+    
+    // Override the updateRadioDisplay to sync with cordovaAudio
+    const originalUpdateRadioDisplay = window.updateRadioDisplay;
+    window.updateRadioDisplay = function() {
+        if (originalUpdateRadioDisplay) {
+            originalUpdateRadioDisplay();
+        }
+        
+        // Also update cordovaAudio station
+        if (window.cordovaAudio && appState && appState.stations && appState.currentStation !== undefined) {
+            const station = appState.stations[appState.currentStation];
+            if (station && window.cordovaAudio.currentStation !== station) {
+                window.cordovaAudio.currentStation = station;
+                window.cordovaAudio.updateNotification();
+            }
+        }
+    };
+}
 </script>
 
 </body>
