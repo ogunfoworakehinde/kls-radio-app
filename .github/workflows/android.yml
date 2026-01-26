@@ -39,6 +39,9 @@ jobs:
         # Add Android platform with specific Gradle version
         cordova platform add android@13.0.0
         
+        # Verify platform was added
+        ls -la platforms/android/
+        
     - name: Ensure required plugins
       run: |
         # Remove existing plugins to avoid conflicts
@@ -76,61 +79,91 @@ jobs:
           exit 1
         fi
         
-    - name: Set Gradle properties for Java 17
+    - name: Prepare build environment
       run: |
-        # Create or update gradle.properties for Java 17 compatibility
-        echo "org.gradle.java.home=/usr/lib/jvm/temurin-17-jdk-amd64" > platforms/android/gradle.properties
-        echo "android.enableJetifier=true" >> platforms/android/gradle.properties
-        echo "android.useAndroidX=true" >> platforms/android/gradle.properties
-        echo "org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m" >> platforms/android/gradle.properties
+        # Create build.json if it doesn't exist
+        if [ ! -f "build.json" ]; then
+          echo '{
+            "android": {
+              "release": {
+                "keystore": "klsradio-release.keystore",
+                "storePassword": "'"${{ secrets.KEYSTORE_PASSWORD }}"'",
+                "alias": "'"${{ secrets.KEY_ALIAS }}"'",
+                "password": "'"${{ secrets.KEY_PASSWORD }}"'",
+                "keystoreType": "JKS"
+              }
+            }
+          }' > build.json
+        fi
         
-    - name: Build Android Release AAB
+        # Ensure gradlew is executable
+        if [ -f "platforms/android/gradlew" ]; then
+          chmod +x platforms/android/gradlew
+        fi
+        
+    - name: Build Android Release AAB (SIMPLIFIED - using cordova command)
       run: |
         echo "🚀 Building Release AAB (Signed Bundle)..."
-        # Build with explicit Gradle wrapper
-        cd platforms/android
-        ./gradlew bundleRelease -PcdvReleaseSigningPropertiesFile=../../../build.json
-        cd ../..
+        # Use cordova build command with proper signing
+        cordova build android --release -- \
+          --keystore=klsradio-release.keystore \
+          --storePassword="${{ secrets.KEYSTORE_PASSWORD }}" \
+          --alias="${{ secrets.KEY_ALIAS }}" \
+          --password="${{ secrets.KEY_PASSWORD }}" \
+          --packageType=bundle
+        
+        echo "✅ Release AAB build completed"
         
     - name: Build Android Debug APK
       run: |
         echo "🔧 Building Debug APK..."
         cordova build android
+        echo "✅ Debug APK build completed"
         
     - name: Get AAB SHA1 fingerprint (CRITICAL CHECK)
       run: |
         # Check the generated AAB's SHA1 to verify it's correct
-        AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" | head -1)
+        echo "🔍 Looking for AAB file..."
+        find platforms/android/app/build/outputs/ -type f -name "*.aab" 2>/dev/null || echo "Searching for AAB files..."
+        
+        AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" 2>/dev/null | head -1)
         if [ -f "$AAB_FILE" ]; then
           echo "📱 Generated AAB file: $(basename "$AAB_FILE")"
           echo "📊 File size: $(wc -c < "$AAB_FILE" | numfmt --to=iec) bytes"
           echo ""
           echo "🔐 SHA1 FINGERPRINT (MUST MATCH Google Play):"
           echo "================================================"
-          SHA1_OUTPUT=$(keytool -printcert -jarfile "$AAB_FILE" 2>/dev/null | grep -A1 "SHA1:" | head -2)
-          echo "$SHA1_OUTPUT"
+          SHA1_OUTPUT=$(keytool -printcert -jarfile "$AAB_FILE" 2>/dev/null)
+          echo "$SHA1_OUTPUT" | grep -A1 "SHA1:" || echo "Could not extract SHA1"
           echo "================================================"
           
           # Extract just the SHA1 value
           SHA1_VALUE=$(echo "$SHA1_OUTPUT" | grep "SHA1:" | head -1 | tr -d ' ' | cut -d':' -f2-)
-          echo "$SHA1_VALUE" > sha1_fingerprint.txt
-          
-          echo ""
-          echo "📋 EXPECTED SHA1 from Google Play Console:"
-          echo "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4"
-          echo ""
-          
-          if [ "$SHA1_VALUE" = "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4" ]; then
-            echo "✅ ✅ ✅ SUCCESS: SHA1 matches! Ready for Google Play upload."
+          if [ ! -z "$SHA1_VALUE" ]; then
+            echo "$SHA1_VALUE" > sha1_fingerprint.txt
+            echo "📝 SHA1 saved: $SHA1_VALUE"
+            
+            echo ""
+            echo "📋 EXPECTED SHA1 from Google Play Console:"
+            echo "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4"
+            echo ""
+            
+            if [ "$SHA1_VALUE" = "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4" ]; then
+              echo "✅ ✅ ✅ SUCCESS: SHA1 matches! Ready for Google Play upload."
+            else
+              echo "❌ ❌ ❌ WARNING: SHA1 DOES NOT MATCH!"
+              echo "   The keystore in KEYSTORE_BASE64 secret is NOT the original one."
+              echo "   Uploading this to Google Play will FAIL."
+            fi
           else
-            echo "❌ ❌ ❌ WARNING: SHA1 DOES NOT MATCH!"
-            echo "   The keystore in KEYSTORE_BASE64 secret is NOT the original one."
-            echo "   Uploading this to Google Play will FAIL."
+            echo "⚠️ Could not extract SHA1 value"
+            echo "Test" > sha1_fingerprint.txt
           fi
         else
-          echo "❌ No AAB file found!"
-          # Show what files exist for debugging
-          find platforms/android/app/build/outputs/ -type f 2>/dev/null | head -20 || echo "No build outputs found"
+          echo "❌ No AAB file found at expected location!"
+          echo "Trying to find any AAB files..."
+          find . -name "*.aab" 2>/dev/null || echo "No AAB files found anywhere"
+          echo "Test" > sha1_fingerprint.txt
         fi
         
     - name: Upload Release AAB Artifact
@@ -138,6 +171,7 @@ jobs:
       with:
         name: android-release-aab
         path: platforms/android/app/build/outputs/bundle/release/*.aab
+        if-no-files-found: warn
         retention-days: 7
         
     - name: Upload Debug APK Artifact
@@ -145,6 +179,7 @@ jobs:
       with:
         name: android-debug-apk
         path: platforms/android/app/build/outputs/apk/debug/*.apk
+        if-no-files-found: warn
         retention-days: 7
         
     - name: Upload SHA1 fingerprint
@@ -153,13 +188,22 @@ jobs:
       with:
         name: build-info
         path: sha1_fingerprint.txt
+        if-no-files-found: warn
         retention-days: 7
         
-    - name: Show build summary
+    - name: Show build summary and file structure
       if: always()
       run: |
         echo "=== BUILD SUMMARY ==="
-        echo "📦 Artifacts generated:"
+        echo ""
+        echo "📁 File structure check:"
+        echo "Platforms directory:"
+        ls -la platforms/android/ 2>/dev/null || echo "No platforms/android directory"
+        echo ""
+        echo "Build outputs:"
+        find platforms/android/app/build/outputs/ -type f 2>/dev/null | head -30 || echo "No build outputs found"
+        echo ""
+        echo "📦 Artifacts generated (if successful):"
         echo "   • android-release-aab: For Google Play Store"
         echo "   • android-debug-apk: For testing"
         echo "   • build-info: Contains SHA1 fingerprint"
