@@ -9,7 +9,10 @@
     <!-- Prevent phone number detection -->
     <meta name="format-detection" content="telephone=no">
     
-
+    <!-- Status bar styling (for iOS but helps Android too) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    
     <!-- Prevent 300ms tap delay -->
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     
@@ -2348,20 +2351,50 @@
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
 
-     
     <script src="js/cordova-background.js"></script>
-       <script src="js/index.js"></script>
+    <script src="js/index.js"></script>
     
-     <script>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
+<script>
 // Wait for Cordova to load
 document.addEventListener('deviceready', function() {
     console.log('Cordova is ready!');
-    // Your existing initialization code here
+    // Initialize background audio if available
+    if (window.cordova && window.BackgroundAudio) {
+        window.BackgroundAudio.configure({
+            keepAlive: true,
+            silentMode: true,
+            notificationEnabled: true,
+            notificationTitle: 'Kingdom Lifestyle Radio',
+            notificationText: 'Playing Gospel Music'
+        });
+    }
 }, false);
+
+// Radio stability variables
+const radioStability = {
+    reconnectAttempts: 0,
+    maxReconnectAttempts: 5,
+    reconnectDelay: 2000,
+    isBackgroundMode: false,
+    wasPlayingBeforeMinimize: false,
+    connectionCheckInterval: null,
+    lastBufferTime: 0,
+    bufferTimeout: null,
+    playAttemptTimeout: null,
+    audioContext: null,
+    isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+};
 
 // Modify your radio functions to use background audio
 function playRadio() {
     const station = appState.stations[appState.currentStation];
+    
+    // Clear any existing timeouts
+    clearRadioTimeouts();
     
     // Check if we're in Cordova environment
     if (window.cordova && window.BackgroundAudio) {
@@ -2372,49 +2405,92 @@ function playRadio() {
         if (success) {
             appState.radioPlaying = true;
             elements.playPauseIcon.textContent = 'pause';
-            showAlert(`Now playing: ${station.name} (Background)`);
             
             // Also update HTML5 audio for web fallback
             elements.radioAudio.src = station.url;
             elements.radioAudio.load();
+            
+            // Start stability monitoring
+            startStabilityMonitoring();
         } else {
             // Fallback to HTML5
             playWithHTML5(station);
         }
     } else {
-        // Web browser fallback
+        // Web browser fallback with enhanced stability
         playWithHTML5(station);
     }
 }
 
 function playWithHTML5(station) {
+    clearRadioTimeouts();
+    
     appState.radioAutoStarted = false;
     appState.radioShouldPlay = true;
     
+    // Force reload audio element
+    elements.radioAudio.pause();
+    elements.radioAudio.currentTime = 0;
     elements.radioAudio.src = station.url;
+    elements.radioAudio.preload = 'auto';
     elements.radioAudio.load();
     
-    elements.radioAudio.play()
+    // Use a promise chain with multiple attempts
+    attemptPlay()
         .then(() => {
             appState.radioPlaying = true;
             elements.playPauseIcon.textContent = 'pause';
             console.log('Radio playback started (HTML5 fallback)');
-            showAlert(`Now playing: ${station.name}`);
+            
+            // Start stability monitoring
+            startStabilityMonitoring();
+            
+            // Store play time
+            radioStability.lastBufferTime = Date.now();
         })
         .catch(error => {
-            console.log('Radio: Initial play failed, silent retry...');
+            console.log('Radio: Initial play failed, attempting reconnect...');
+            handlePlaybackError();
+        });
+    
+    function attemptPlay(retryCount = 0) {
+        return new Promise((resolve, reject) => {
+            const playPromise = elements.radioAudio.play();
             
-            if (appState.radioShouldPlay) {
-                setTimeout(() => {
-                    elements.radioAudio.play().catch(e => {
-                        console.log('Radio: Retry failed');
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => resolve())
+                    .catch(error => {
+                        if (retryCount < 3) {
+                            // Wait and retry
+                            setTimeout(() => {
+                                attemptPlay(retryCount + 1)
+                                    .then(resolve)
+                                    .catch(reject);
+                            }, 1000 * (retryCount + 1));
+                        } else {
+                            reject(error);
+                        }
                     });
+            } else {
+                // For older browsers
+                setTimeout(() => {
+                    if (elements.radioAudio.readyState >= 2) {
+                        resolve();
+                    } else {
+                        reject(new Error('Audio not ready'));
+                    }
                 }, 1000);
             }
         });
+    }
 }
 
 function pauseRadio() {
+    // Clear all monitoring
+    clearRadioTimeouts();
+    stopStabilityMonitoring();
+    
     // Try Cordova background audio first
     if (window.cordova && window.BackgroundAudio && window.BackgroundAudio.isPlaying()) {
         window.BackgroundAudio.pause();
@@ -2430,14 +2506,13 @@ function pauseRadio() {
     appState.radioPlaying = false;
     elements.playPauseIcon.textContent = 'play_arrow';
     console.log('Radio paused by user');
-    
-    // Stop buffer monitor if exists
-    if (typeof stopBufferMonitor === 'function') {
-        stopBufferMonitor();
-    }
 }
 
 function stopRadio() {
+    // Clear all monitoring
+    clearRadioTimeouts();
+    stopStabilityMonitoring();
+    
     // Try Cordova background audio first
     if (window.cordova && window.BackgroundAudio) {
         window.BackgroundAudio.stop();
@@ -2452,723 +2527,816 @@ function stopRadio() {
     
     console.log('Radio stopped');
 }
-     
-</script>
 
-     
-
-
-
-
-     
-  <script>
-    // Loading Screen Functionality
-    function initLoadingScreen() {
-        const loadingScreen = document.getElementById('loadingScreen');
-        const appWrapper = document.getElementById('appWrapper');
-        const progressBar = document.getElementById('progressBar');
-        const mottoText = document.getElementById('mottoText');
-        
-        // Start loading animation
-        loadingScreen.classList.add('loading');
-        
-        // Start progress bar
-        progressBar.style.width = '100%';
-        
-        // Type the motto character by character
-        const motto = ".....";
-        let charIndex = 0;
-        
-        function typeMotto() {
-            if (charIndex < motto.length) {  
-                const char = motto.charAt(charIndex);
-                const span = document.createElement('span');
-                span.className = 'motto-char';
-                span.textContent = char;
-                span.style.animationDelay = `${charIndex * 0.1}s`; 
-                mottoText.appendChild(span);
-                charIndex++;
-                setTimeout(typeMotto, 150);
-            }
+// Enhanced stability functions
+function startStabilityMonitoring() {
+    stopStabilityMonitoring();
+    
+    // Check connection every 10 seconds
+    radioStability.connectionCheckInterval = setInterval(() => {
+        if (appState.radioPlaying && appState.radioShouldPlay) {
+            checkAudioHealth();
         }
-        
-        // Start typing after a short delay
-        setTimeout(typeMotto, 500);
-        
-        // After 2 seconds, open the book
-        setTimeout(() => {
-            loadingScreen.classList.remove('loading');
-            loadingScreen.classList.add('ready');
-        }, 3000);
-        
-        // After 4 seconds total, show the app
-        setTimeout(() => {
-            loadingScreen.classList.add('hidden');
-            appWrapper.classList.add('loaded');
-            
-            // Initialize the main app
-            initMainApp();
-        }, 4000);
+    }, 10000);
+    
+    // Handle page visibility changes
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Handle beforeunload
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    // Handle pagehide (for Safari)
+    window.addEventListener('pagehide', handlePageHide);
+    
+    // Handle pageshow (for Safari)
+    window.addEventListener('pageshow', handlePageShow);
+    
+    // Monitor audio element events
+    setupAudioEventListeners();
+}
+
+function stopStabilityMonitoring() {
+    if (radioStability.connectionCheckInterval) {
+        clearInterval(radioStability.connectionCheckInterval);
+        radioStability.connectionCheckInterval = null;
     }
+    
+    // Remove event listeners
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+    window.removeEventListener('pagehide', handlePageHide);
+    window.removeEventListener('pageshow', handlePageShow);
+}
 
-    // Initialize AOS
-    AOS.init({
-        duration: 400,
-        easing: 'ease-out-cubic',
-        once: true
-    });
-
-    // Initialize EmailJS
-    emailjs.init('835HY_wRkYBhqdu7d');
-
-    // App State
-    const appState = {
-        currentPage: 'home',
-        radioPlaying: false,
-        radioShouldPlay: true,
-        currentStation: 0,
-        stations: [
-            {
-                name: "English Gospel",
-                url: "https://s3.voscast.com:9425/stream",
-                description: "24/7 English Gospel Music"
-            },
-            {
-                name: "Yoruba Gospel",
-                url: "https://s3.voscast.com:10745/stream",
-                description: "Yoruba Language Worship "
-            },
-            {
-                name: "Praise Worship",
-                url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
-                description: "Contemporary Praise"
-            }
-        ],
-        settings: {
-            theme: 'deep-blue',
-            radioVolume: 1,
-            podcastVolume: 1,
-            autoPlay: true,
-            notifications: true,
-            dataSaver: false
-        },
-        blogPage: 1,
-        blogPerPage: 6,
-        podcastPage: 1,
-        podcastPerPage: 10,
-        allBlogPosts: [],
-        filteredBlogPosts: [],
-        blogSlides: [],
-        currentBlogSlide: 0,
-        blogSlideInterval: null,
-        podcastData: {
-            episodes: [],
-            currentPage: 1,
-            totalPages: 1,
-            totalEpisodes: 0,
-            podcastInfo: {
-                title: "Kingdom Lifestyle Podcast",
-                description: "Welcome to Kingdom Lifestyle Podcast. A platform for the word of Faith, messages, and exhortations capable of lifting up your spirit and nourishing your soul. Join us every Friday and God bless you richly. Amen!"
-            }
-        },
-        currentPodcast: null,
-        radioAutoStarted: false,
-        heroSlides: [],
-        heroCurrentSlide: 0,
-        heroAutoSlideInterval: null,
-        blogPostsCache: {}, // Cache for blog posts
-        podcastCache: {}, // Cache for podcast data
-        // ADDED: Radio reconnection variables - SIMPLIFIED
-        radioReconnectTimeout: null,
-        isReconnecting: false,
-        lastPlayTime: 0,
-        bufferCheckInterval: null
+function setupAudioEventListeners() {
+    // Remove existing listeners to avoid duplicates
+    const audio = elements.radioAudio;
+    audio.onerror = null;
+    audio.onstalled = null;
+    audio.onwaiting = null;
+    audio.oncanplay = null;
+    audio.oncanplaythrough = null;
+    audio.ondurationchange = null;
+    audio.onloadeddata = null;
+    audio.onloadedmetadata = null;
+    audio.onsuspend = null;
+    audio.onended = null;
+    
+    // Enhanced error handling
+    audio.onerror = function(e) {
+        console.log('Audio error occurred:', audio.error);
+        if (appState.radioShouldPlay && !radioStability.isBackgroundMode) {
+            scheduleReconnect();
+        }
     };
-
-    // DOM Elements
-    const elements = {
-        mainContent: document.getElementById('mainContent'),
-        radioAudio: document.getElementById('radioAudio'),
-        podcastAudio: document.getElementById('podcastAudio'),
-        currentStation: document.getElementById('currentStation'),
-        currentChannel: document.getElementById('currentChannel'),
-        playPauseBtn: document.getElementById('playPauseBtn'),
-        playPauseIcon: document.getElementById('playPauseIcon'),
-        channelSwitcher: document.getElementById('channelSwitcher'),
-        channelMenuBtn: document.getElementById('channelMenuBtn'),
-        prevChannelBtn: document.getElementById('prevChannelBtn'),
-        nextChannelBtn: document.getElementById('nextChannelBtn'),
-        bottomNavItems: document.querySelectorAll('.nav-item'),
-        radioVolume: document.getElementById('radioVolume'),
-        podcastVolume: document.getElementById('podcastVolume'),
-        themeSelect: document.getElementById('themeSelect'),
-        autoPlayToggle: document.getElementById('autoPlayToggle'),
-        notificationsToggle: document.getElementById('notificationsToggle'),
-        dataSaverToggle: document.getElementById('dataSaverToggle'),
-        currentPodcastPlayer: document.getElementById('currentPodcastPlayer'),
-        currentPodcastInfo: document.getElementById('currentPodcastInfo'),
-        podcastList: document.getElementById('podcastList'),
-        podcastLoading: document.getElementById('podcastLoading'),
-        podcastPagination: document.getElementById('podcastPagination'),
-        podcastStats: document.getElementById('podcastStats'),
-        podcastCount: document.getElementById('podcastCount'),
-        moreModal: document.getElementById('moreModal'),
-        blogHeroSlider: document.getElementById('blogHeroSlider'),
-        heroPrevBtn: document.getElementById('heroPrevBtn'),
-        heroNextBtn: document.getElementById('heroNextBtn'),
-        heroDots: document.getElementById('heroDots'),
-        blogPosts: document.getElementById('blogPosts'),
-        blogLoading: document.getElementById('blogLoading'),
-        blogPagination: document.getElementById('blogPagination')
+    
+    // Handle stalled stream
+    audio.onstalled = function() {
+        console.log('Stream stalled, attempting recovery...');
+        if (appState.radioShouldPlay && audio.paused) {
+            scheduleReconnect();
+        }
     };
-
-    // Main App Initialization
-    function initMainApp() {
-        // Navigation Functions
-        function navigateTo(page) {
-            // Update state
-            appState.currentPage = page;
-            
-            // Hide all pages
-            document.querySelectorAll('.page-content').forEach(p => {
-                p.classList.remove('active');
-            });
-            
-            // Show target page
-            const targetPage = document.getElementById(`${page}-page`);
-            if (targetPage) {
-                targetPage.classList.add('active');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                
-                // Load page content
-                loadPageContent(page);
+    
+    // Handle buffering
+    audio.onwaiting = function() {
+        console.log('Buffering...');
+        radioStability.lastBufferTime = Date.now();
+        
+        // If buffering takes too long, try reconnecting
+        radioStability.bufferTimeout = setTimeout(() => {
+            if (appState.radioShouldPlay && audio.paused) {
+                console.log('Buffering timeout, reconnecting...');
+                scheduleReconnect();
             }
-            
-            // Update navigation
-            updateNavigation(page);
-            
-            // Update URL
-            history.pushState({ page }, '', `?page=${page}`);
-            
-            // Close channel switcher if open
-            elements.channelSwitcher.classList.remove('active');
-            
-            // Close more modal if open
-            elements.moreModal.classList.remove('active');
+        }, 15000); // 15 seconds buffer timeout
+    };
+    
+    // Handle when enough data is buffered
+    audio.oncanplay = audio.oncanplaythrough = function() {
+        console.log('Enough data buffered');
+        clearTimeout(radioStability.bufferTimeout);
+        
+        // If we should be playing but audio is paused, try to play
+        if (appState.radioShouldPlay && audio.paused && !radioStability.isBackgroundMode) {
+            audio.play().catch(console.error);
         }
-
-        function updateNavigation(page) {
-            elements.bottomNavItems.forEach(item => {
-                item.classList.remove('active');
-                if (item.dataset.page === page) {
-                    item.classList.add('active');
-                }
-            });
-            
-            // Handle "More" tab
-            const morePages = ['about', 'donation', 'contact', 'settings'];
-            if (morePages.includes(page)) {
-                document.querySelector('.nav-item[data-page="more"]').classList.add('active');
-            }
+    };
+    
+    // Handle stream end
+    audio.onended = function() {
+        console.log('Stream ended, reconnecting...');
+        if (appState.radioShouldPlay) {
+            scheduleReconnect();
         }
-
-        // Load page content
-        function loadPageContent(page) {
-            switch (page) {
-                case 'home':
-                    loadHomeHeroSlider();
-                    break;
-                case 'blog':
-                    loadHeroSlider();
-                    loadBlogPosts();
-                    break;
-                case 'podcast':
-                    loadPodcasts();
-                    break;
-                case 'settings':
-                    loadSettings();
-                    break;
-            }
+    };
+    
+    // Handle when data loading is suspended
+    audio.onsuspend = function() {
+        console.log('Data loading suspended');
+        if (appState.radioShouldPlay && !radioStability.isBackgroundMode) {
+            setTimeout(checkAudioHealth, 1000);
         }
+    };
+}
 
-        // Home Hero Slider
-        function loadHomeHeroSlider() {
-            const slider = document.getElementById('homeHeroSlider');
-            const slides = slider.querySelectorAll('.hero-slide');
-            let currentSlide = 0;
-            
-            function showSlide(index) {
-                slides.forEach(slide => slide.classList.remove('active'));
-                slides[index].classList.add('active');
-            }
-            
-            function nextSlide() {
-                currentSlide = (currentSlide + 1) % slides.length;
-                showSlide(currentSlide);
-            }
-            
-            // Auto rotate every 5 seconds
-            setInterval(nextSlide, 5000);
+function handleVisibilityChange() {
+    if (document.hidden) {
+        // App minimized/background
+        console.log('App minimized/backgrounded');
+        radioStability.isBackgroundMode = true;
+        radioStability.wasPlayingBeforeMinimize = appState.radioPlaying;
+        
+        // For Safari/iOS, we need special handling
+        if (radioStability.isSafari && appState.radioPlaying) {
+            // Safari pauses audio automatically in background
+            // We'll schedule a play attempt when app returns
+            elements.radioAudio.pause();
         }
-
-        // Radio Functions with ULTRA-STABLE Playback
-        function initRadio() {
-            updateRadioDisplay();
-            
-            // Set initial volume
-            elements.radioAudio.volume = appState.settings.radioVolume;
-            
-            // Play/Pause button
-            elements.playPauseBtn.addEventListener('click', toggleRadioPlay);
-            
-            // Channel navigation
-            elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
-            elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
-            
-            // Channel menu
-            elements.channelMenuBtn.addEventListener('click', toggleChannelSwitcher);
-            
-            // Channel switcher options
-            document.querySelectorAll('.channel-option').forEach(option => {
-                option.addEventListener('click', function() {
-                    const channel = parseInt(this.dataset.channel);
-                    if (channel !== appState.currentStation) {
-                        appState.currentStation = channel;
-                        updateRadioDisplay();
-                        updateChannelSwitcher();
-                        if (appState.radioPlaying) {
-                            playRadio();
-                        }
-                        toggleChannelSwitcher();
-                    }
-                });
-            });
-            
-            // Close channel switcher when clicking outside
-            document.addEventListener('click', (e) => {
-                if (!elements.channelSwitcher.contains(e.target) && 
-                    !elements.channelMenuBtn.contains(e.target) &&
-                    elements.channelSwitcher.classList.contains('active')) {
-                    toggleChannelSwitcher();
-                }
-            });
-            
-            // Initialize radio event listeners - SIMPLIFIED STABLE VERSION
-            initStableRadioEvents();
-            
-            // Auto-play radio on page load
-            if (appState.settings.autoPlay && !appState.radioPlaying) {
-                setTimeout(() => {
-                    playRadioSilently();
-                }, 500);
-            }
-        }
-
-        // NEW: Ultra-stable radio event handling
-        function initStableRadioEvents() {
-            // Clear any existing timeouts
-            if (appState.radioReconnectTimeout) {
-                clearTimeout(appState.radioReconnectTimeout);
-            }
-            if (appState.bufferCheckInterval) {
-                clearInterval(appState.bufferCheckInterval);
-            }
-            
-            // Reset audio element
-            elements.radioAudio.src = appState.stations[appState.currentStation].url;
-            elements.radioAudio.load();
-            
-            // SIMPLIFIED EVENT HANDLERS - NO ERROR POPUPS
-            elements.radioAudio.addEventListener('playing', () => {
-                appState.radioPlaying = true;
-                appState.isReconnecting = false;
-                elements.playPauseIcon.textContent = 'pause';
-                appState.lastPlayTime = Date.now();
-                console.log('Radio: Playing smoothly');
-                
-                // Start buffer monitoring
-                startBufferMonitor();
-            });
-            
-            elements.radioAudio.addEventListener('pause', () => {
-                // Only update UI if user intentionally paused
-                if (!appState.radioShouldPlay) {
-                    appState.radioPlaying = false;
-                    elements.playPauseIcon.textContent = 'play_arrow';
-                    console.log('Radio: User paused');
-                    
-                    // Stop buffer monitoring when user pauses
-                    stopBufferMonitor();
-                } else {
-                    // This is an automatic pause (network issue)
-                    console.log('Radio: Auto-pause detected, will auto-recover');
-                    
-                    // Try to resume after a short delay - SILENTLY
-                    setTimeout(() => {
-                        if (appState.radioShouldPlay && !appState.radioPlaying && !appState.isReconnecting) {
-                            appState.isReconnecting = true;
-                            silentReconnect();
-                        }
-                    }, 1000);
-                }
-            });
-            
-            elements.radioAudio.addEventListener('ended', () => {
-                console.log('Radio: Stream ended, auto-restarting...');
-                if (appState.radioShouldPlay) {
-                    silentReconnect();
-                }
-            });
-            
-            // SILENT ERROR HANDLING - NO POPUPS
-            elements.radioAudio.addEventListener('error', (e) => {
-                console.log('Radio: Error detected (silent recovery)');
-                
-                // Clear any existing reconnection
-                if (appState.radioReconnectTimeout) {
-                    clearTimeout(appState.radioReconnectTimeout);
-                }
-                
-                if (appState.radioShouldPlay) {
-                    // SILENT reconnect after error
-                    appState.radioReconnectTimeout = setTimeout(() => {
-                        if (appState.radioShouldPlay) {
-                            silentReconnect();
-                        }
-                    }, 2000);
-                }
-            });
-            
-            // Handle stalled audio (buffering issues)
-            elements.radioAudio.addEventListener('stalled', () => {
-                console.log('Radio: Stream stalled, monitoring...');
-                // Don't do anything immediately - let the buffer catch up
-                // If it stays stalled, the error handler will catch it
-            });
-            
-            // Handle waiting (buffering)
-            elements.radioAudio.addEventListener('waiting', () => {
-                console.log('Radio: Buffering...');
-                // Just log it, don't show to user
-            });
-            
-            // Handle canplay (ready to play)
-            elements.radioAudio.addEventListener('canplay', () => {
-                console.log('Radio: Ready to play');
-            });
-            
-            // Handle canplaythrough (enough buffered)
-            elements.radioAudio.addEventListener('canplaythrough', () => {
-                console.log('Radio: Enough buffer to play through');
-            });
-            
-            // Network connectivity - SILENT recovery
-            window.addEventListener('online', () => {
-                console.log('Network: Restored, auto-reconnecting radio...');
-                
-                // Wait a moment for network stability
-                setTimeout(() => {
-                    if (appState.radioShouldPlay && !appState.radioPlaying && !appState.isReconnecting) {
-                        silentReconnect();
-                    }
-                }, 2000);
-            });
-            
-            window.addEventListener('offline', () => {
-                console.log('Network: Lost connection');
-                // Nothing to do - error handler will manage when online returns
-            });
-            
-            // Page visibility - resume playback when tab becomes active
-            document.addEventListener('visibilitychange', () => {
-                if (!document.hidden && appState.radioShouldPlay && !appState.radioPlaying && !appState.isReconnecting) {
-                    console.log('Page: Became visible, resuming radio...');
-                    setTimeout(() => {
-                        silentReconnect();
-                    }, 500);
-                }
-            });
-        }
-
-        // NEW: Silent reconnect - NO USER NOTIFICATIONS
-        function silentReconnect() {
-            if (appState.isReconnecting) return;
-            
-            appState.isReconnecting = true;
-            console.log('Radio: Attempting silent reconnect...');
-            
-            // Stop buffer monitor during reconnect
-            stopBufferMonitor();
-            
-            // Clear current source
-            elements.radioAudio.src = '';
-            
-            // Short delay before reconnecting
+    } else {
+        // App foregrounded
+        console.log('App foregrounded');
+        radioStability.isBackgroundMode = false;
+        
+        // Resume playback if it was playing before minimize
+        if (radioStability.wasPlayingBeforeMinimize && appState.radioShouldPlay) {
             setTimeout(() => {
-                if (appState.radioShouldPlay) {
-                    // Reset the source
-                    updateRadioDisplay();
-                    elements.radioAudio.load();
-                    
-                    // Try to play
-                    elements.radioAudio.play()
-                        .then(() => {
-                            console.log('Radio: Silent reconnect successful');
-                            appState.isReconnecting = false;
-                        })
-                        .catch(error => {
-                            console.log('Radio: Silent reconnect failed, will retry...');
-                            appState.isReconnecting = false;
-                            
-                            // Retry with exponential backoff
-                            const delay = Math.min(3000, 1000 * Math.pow(1.5, 3));
-                            
-                            appState.radioReconnectTimeout = setTimeout(() => {
-                                if (appState.radioShouldPlay) {
-                                    silentReconnect();
-                                }
-                            }, delay);
-                        });
-                } else {
-                    appState.isReconnecting = false;
+                if (appState.radioShouldPlay && !appState.radioPlaying) {
+                    console.log('Resuming playback after foreground');
+                    elements.radioAudio.play().catch(error => {
+                        console.log('Resume failed, reconnecting...');
+                        scheduleReconnect();
+                    });
                 }
             }, 500);
         }
+    }
+}
 
-        // NEW: Buffer monitoring for smooth playback
-        function startBufferMonitor() {
-            stopBufferMonitor();
-            
-            appState.bufferCheckInterval = setInterval(() => {
-                if (!appState.radioPlaying || !appState.radioShouldPlay || !elements.radioAudio) {
-                    stopBufferMonitor();
-                    return;
-                }
-                
-                // Check if playback seems stuck
-                if (elements.radioAudio.paused && !elements.radioAudio.ended) {
-                    console.log('Radio: Buffer check detected pause, attempting resume...');
-                    
-                    // Try to resume playback quietly
-                    elements.radioAudio.play().catch(() => {
-                        // If resume fails, trigger silent reconnect
-                        if (!appState.isReconnecting) {
-                            silentReconnect();
-                        }
-                    });
-                }
-                
-                // Update last play time
-                if (!elements.radioAudio.paused) {
-                    appState.lastPlayTime = Date.now();
-                }
-            }, 10000); // Check every 10 seconds
-        }
+function handleBeforeUnload() {
+    // Save state before page unload
+    if (appState.radioPlaying) {
+        localStorage.setItem('radioWasPlaying', 'true');
+        localStorage.setItem('radioStationIndex', appState.currentStation.toString());
+    }
+}
 
-        function stopBufferMonitor() {
-            if (appState.bufferCheckInterval) {
-                clearInterval(appState.bufferCheckInterval);
-                appState.bufferCheckInterval = null;
-            }
-        }
+function handlePageHide() {
+    // Safari specific handling
+    if (radioStability.isSafari) {
+        radioStability.isBackgroundMode = true;
+    }
+}
 
-        function updateRadioDisplay() {
-            const station = appState.stations[appState.currentStation];
-            elements.currentStation.textContent = station.name;
-            elements.currentChannel.textContent = station.description;
-            elements.radioAudio.src = station.url;
-        }
-
-        function toggleRadioPlay() {
-            if (appState.radioPlaying) {
-                // User intentionally paused
-                appState.radioShouldPlay = false;
-                pauseRadio();
-            } else {
-                // User wants to play
-                appState.radioShouldPlay = true;
-                playRadio();
-            }
-        }
-
-        function playRadio() {
-            appState.radioAutoStarted = false;
-            appState.radioShouldPlay = true;
-            
-            // Ensure audio element is ready
-            elements.radioAudio.load();
-            
-            elements.radioAudio.play()
-                .then(() => {
-                    appState.radioPlaying = true;
-                    elements.playPauseIcon.textContent = 'pause';
-                    console.log('Radio playback started');
-                    showAlert(`Now playing: ${appState.stations[appState.currentStation].name}`);
-                })
-                .catch(error => {
-                    console.log('Radio: Initial play failed, silent retry...');
-                    
-                    // Silent retry
-                    if (appState.radioShouldPlay) {
-                        setTimeout(() => {
-                            elements.radioAudio.play().catch(e => {
-                                console.log('Radio: Retry failed, silent reconnect...');
-                                silentReconnect();
-                            });
-                        }, 1000);
-                    }
+function handlePageShow() {
+    // Safari specific handling
+    if (radioStability.isSafari && radioStability.isBackgroundMode) {
+        radioStability.isBackgroundMode = false;
+        
+        // Check if we need to resume playback
+        if (appState.radioShouldPlay && !appState.radioPlaying) {
+            setTimeout(() => {
+                elements.radioAudio.play().catch(error => {
+                    console.log('Safari resume failed, reconnecting...');
+                    scheduleReconnect();
                 });
+            }, 1000);
         }
+    }
+}
 
-        function playRadioSilently() {
-            appState.radioAutoStarted = true;
-            appState.radioShouldPlay = true;
-            
-            elements.radioAudio.play()
-                .then(() => {
-                    appState.radioPlaying = true;
-                    elements.playPauseIcon.textContent = 'pause';
-                    console.log('Radio auto-started successfully');
-                })
-                .catch(error => {
-                    console.log('Radio: Auto-play failed, silent retry...');
-                    appState.radioAutoStarted = false;
-                    
-                    // Silent retry
-                    if (appState.radioShouldPlay) {
-                        setTimeout(() => {
-                            elements.radioAudio.play().catch(e => {
-                                console.log('Radio: Auto-play retry failed');
-                            });
-                        }, 2000);
-                    }
-                });
-        }
-
-        function pauseRadio() {
-            appState.radioShouldPlay = false;
-            elements.radioAudio.pause();
-            appState.radioPlaying = false;
-            elements.playPauseIcon.textContent = 'play_arrow';
-            console.log('Radio paused by user');
-            
-            // Stop buffer monitor when user pauses
-            stopBufferMonitor();
-        }
-
-        function switchChannel(direction) {
-            appState.currentStation = (appState.currentStation + direction + appState.stations.length) % appState.stations.length;
-            updateRadioDisplay();
-            updateChannelSwitcher();
-            if (appState.radioPlaying) {
-                playRadio();
-            }
-        }
-
-        function toggleChannelSwitcher() {
-            elements.channelSwitcher.classList.toggle('active');
-        }
-
-        function updateChannelSwitcher() {
-            document.querySelectorAll('.channel-option').forEach((option, index) => {
-                option.classList.toggle('active', index === appState.currentStation);
+function checkAudioHealth() {
+    const audio = elements.radioAudio;
+    
+    // Check if audio is playing when it should be
+    if (appState.radioShouldPlay && appState.radioPlaying) {
+        if (audio.paused && !audio.ended) {
+            console.log('Audio unexpectedly paused, attempting resume...');
+            audio.play().catch(error => {
+                console.log('Resume failed, reconnecting...');
+                scheduleReconnect();
             });
         }
-
-        // More Modal Functions
-        function toggleMoreModal() {
-            elements.moreModal.classList.toggle('active');
-            
-            // Close when clicking outside
-            if (elements.moreModal.classList.contains('active')) {
-                setTimeout(() => {
-                    const closeHandler = (e) => {
-                        if (!elements.moreModal.contains(e.target) && 
-                            !document.querySelector('.nav-item[data-page="more"]').contains(e.target)) {
-                            elements.moreModal.classList.remove('active');
-                            document.removeEventListener('click', closeHandler);
-                        }
-                    };
-                    document.addEventListener('click', closeHandler);
-                }, 0);
-            }
+        
+        // Check if we're getting data
+        if (audio.readyState < 2 && Date.now() - radioStability.lastBufferTime > 10000) {
+            console.log('No data for 10 seconds, reconnecting...');
+            scheduleReconnect();
         }
+    }
+}
 
-        // Settings Functions
-        function loadSettings() {
-            // Load saved settings
-            const savedSettings = localStorage.getItem('klsr_settings');
-            if (savedSettings) {
-                appState.settings = { ...appState.settings, ...JSON.parse(savedSettings) };
-            }
-            
-            // Update UI with current settings
-            elements.themeSelect.value = appState.settings.theme;
-            elements.radioVolume.value = appState.settings.radioVolume;
-            elements.podcastVolume.value = appState.settings.podcastVolume;
-            elements.autoPlayToggle.checked = appState.settings.autoPlay;
-            elements.notificationsToggle.checked = appState.settings.notifications;
-            elements.dataSaverToggle.checked = appState.settings.dataSaver;
-            
-            // Apply theme
-            applyTheme(appState.settings.theme);
+function scheduleReconnect() {
+    // Clear any existing reconnect
+    clearTimeout(radioStability.playAttemptTimeout);
+    
+    if (radioStability.reconnectAttempts >= radioStability.maxReconnectAttempts) {
+        console.log('Max reconnection attempts reached');
+        radioStability.reconnectAttempts = 0;
+        return;
+    }
+    
+    radioStability.reconnectAttempts++;
+    console.log(`Reconnection attempt ${radioStability.reconnectAttempts}/${radioStability.maxReconnectAttempts}`);
+    
+    // Exponential backoff
+    const delay = Math.min(radioStability.reconnectDelay * Math.pow(1.5, radioStability.reconnectAttempts - 1), 30000);
+    
+    radioStability.playAttemptTimeout = setTimeout(() => {
+        if (appState.radioShouldPlay) {
+            reconnectRadio();
         }
+    }, delay);
+}
 
-        function saveSettings() {
-            // Update settings from UI
-            appState.settings.theme = elements.themeSelect.value;
-            appState.settings.radioVolume = parseFloat(elements.radioVolume.value);
-            appState.settings.podcastVolume = parseFloat(elements.podcastVolume.value);
-            appState.settings.autoPlay = elements.autoPlayToggle.checked;
-            appState.settings.notifications = elements.notificationsToggle.checked;
-            appState.settings.dataSaver = elements.dataSaverToggle.checked;
-            
-            // Save to localStorage
-            localStorage.setItem('klsr_settings', JSON.stringify(appState.settings));
-            
-            // Apply changes
-            applyTheme(appState.settings.theme);
-            elements.radioAudio.volume = appState.settings.radioVolume;
-            elements.podcastAudio.volume = appState.settings.podcastVolume;
-            
-            showAlert('Settings saved successfully!');
-            
-            // Restart radio if auto-play is enabled
-            if (appState.settings.autoPlay && !appState.radioPlaying) {
-                appState.radioShouldPlay = true;
-                setTimeout(playRadioSilently, 500);
-            }
+function reconnectRadio() {
+    console.log('Attempting to reconnect radio...');
+    
+    // Save current station
+    const station = appState.stations[appState.currentStation];
+    
+    // Create a new audio element to force fresh connection
+    const oldAudio = elements.radioAudio;
+    const newAudio = new Audio();
+    
+    // Copy properties
+    newAudio.volume = oldAudio.volume;
+    newAudio.preload = 'auto';
+    newAudio.crossOrigin = 'anonymous';
+    
+    // Set up event listeners for new audio
+    newAudio.onerror = oldAudio.onerror;
+    newAudio.onstalled = oldAudio.onstalled;
+    newAudio.onwaiting = oldAudio.onwaiting;
+    newAudio.oncanplay = oldAudio.oncanplay;
+    newAudio.oncanplaythrough = oldAudio.oncanplaythrough;
+    newAudio.onended = oldAudio.onended;
+    newAudio.onsuspend = oldAudio.onsuspend;
+    
+    // Set source
+    newAudio.src = station.url + '?reconnect=' + Date.now(); // Cache busting
+    
+    // Replace the audio element
+    oldAudio.parentNode.replaceChild(newAudio, oldAudio);
+    
+    // Update reference
+    elements.radioAudio = newAudio;
+    
+    // Load and play
+    newAudio.load();
+    
+    const playPromise = newAudio.play();
+    if (playPromise !== undefined) {
+        playPromise
+            .then(() => {
+                console.log('Reconnection successful');
+                radioStability.reconnectAttempts = 0;
+                radioStability.lastBufferTime = Date.now();
+            })
+            .catch(error => {
+                console.log('Reconnection play failed:', error);
+                scheduleReconnect();
+            });
+    }
+}
+
+function clearRadioTimeouts() {
+    clearTimeout(radioStability.playAttemptTimeout);
+    clearTimeout(radioStability.bufferTimeout);
+    radioStability.playAttemptTimeout = null;
+    radioStability.bufferTimeout = null;
+}
+
+function handlePlaybackError() {
+    if (appState.radioShouldPlay) {
+        // Try different strategies
+        if (radioStability.reconnectAttempts < 2) {
+            // Try immediate reconnection first
+            setTimeout(reconnectRadio, 1000);
+        } else {
+            // Then try with cache busting
+            scheduleReconnect();
         }
+    }
+}
 
-        function resetSettings() {
-            if (confirm('Reset all settings to default?')) {
-                localStorage.removeItem('klsr_settings');
-                appState.settings = {
-                    theme: 'deep-blue',
-                    radioVolume: 1,
-                    podcastVolume: 1,
-                    autoPlay: true,
-                    notifications: true,
-                    dataSaver: false
-                };
+// Initialize radio stability on page load
+function initRadioStability() {
+    // Restore playback state if needed
+    const wasPlaying = localStorage.getItem('radioWasPlaying') === 'true';
+    const savedStation = parseInt(localStorage.getItem('radioStationIndex') || '0');
+    
+    if (wasPlaying && savedStation >= 0 && savedStation < appState.stations.length) {
+        appState.currentStation = savedStation;
+        appState.radioShouldPlay = true;
+        
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+            if (elements.radioAudio) {
+                playRadio();
+            }
+        }, 1000);
+    }
+    
+    // Clear saved state
+    localStorage.removeItem('radioWasPlaying');
+    localStorage.removeItem('radioStationIndex');
+}
+
+// Loading Screen Functionality
+function initLoadingScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    const appWrapper = document.getElementById('appWrapper');
+    const progressBar = document.getElementById('progressBar');
+    const mottoText = document.getElementById('mottoText');
+    
+    // Start loading animation
+    loadingScreen.classList.add('loading');
+    
+    // Start progress bar
+    progressBar.style.width = '100%';
+    
+    // Type the motto character by character
+    const motto = ".....";
+    let charIndex = 0;
+    
+    function typeMotto() {
+        if (charIndex < motto.length) {  
+            const char = motto.charAt(charIndex);
+            const span = document.createElement('span');
+            span.className = 'motto-char';
+            span.textContent = char;
+            span.style.animationDelay = `${charIndex * 0.1}s`; 
+            mottoText.appendChild(span);
+            charIndex++;
+            setTimeout(typeMotto, 150);
+        }
+    }
+    
+    // Start typing after a short delay
+    setTimeout(typeMotto, 500);
+    
+    // After 2 seconds, open the book
+    setTimeout(() => {
+        loadingScreen.classList.remove('loading');
+        loadingScreen.classList.add('ready');
+    }, 3000);
+    
+    // After 4 seconds total, show the app
+    setTimeout(() => {
+        loadingScreen.classList.add('hidden');
+        appWrapper.classList.add('loaded');
+        
+        // Initialize the main app
+        initMainApp();
+    }, 4000);
+}
+
+// Initialize AOS
+AOS.init({
+    duration: 400,
+    easing: 'ease-out-cubic',
+    once: true
+});
+
+// Initialize EmailJS
+emailjs.init('835HY_wRkYBhqdu7d');
+
+// App State
+const appState = {
+    currentPage: 'home',
+    radioPlaying: false,
+    radioShouldPlay: true,
+    currentStation: 0,
+    stations: [
+        {
+            name: "English Gospel",
+            url: "https://s3.voscast.com:9425/stream",
+            description: "24/7 English Gospel Music"
+        },
+        {
+            name: "Yoruba Gospel",
+            url: "https://s3.voscast.com:10745/stream",
+            description: "Yoruba Language Worship "
+        },
+        {
+            name: "Praise Worship",
+            url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
+            description: "Contemporary Praise"
+        }
+    ],
+    settings: {
+        theme: 'deep-blue',
+        radioVolume: 1,
+        podcastVolume: 1,
+        autoPlay: true,
+        notifications: true,
+        dataSaver: false
+    },
+    blogPage: 1,
+    blogPerPage: 6,
+    podcastPage: 1,
+    podcastPerPage: 10,
+    allBlogPosts: [],
+    filteredBlogPosts: [],
+    blogSlides: [],
+    currentBlogSlide: 0,
+    blogSlideInterval: null,
+    podcastData: {
+        episodes: [],
+        currentPage: 1,
+        totalPages: 1,
+        totalEpisodes: 0,
+        podcastInfo: {
+            title: "Kingdom Lifestyle Podcast",
+            description: "Welcome to Kingdom Lifestyle Podcast. A platform for the word of Faith, messages, and exhortations capable of lifting up your spirit and nourishing your soul. Join us every Friday and God bless you richly. Amen!"
+        }
+    },
+    currentPodcast: null,
+    radioAutoStarted: false,
+    heroSlides: [],
+    heroCurrentSlide: 0,
+    heroAutoSlideInterval: null,
+    blogPostsCache: {}, // Cache for blog posts
+    podcastCache: {}, // Cache for podcast data
+    // ADDED: Radio reconnection variables - SIMPLIFIED
+    radioReconnectTimeout: null,
+    isReconnecting: false,
+    lastPlayTime: 0,
+    bufferCheckInterval: null
+};
+
+// DOM Elements
+const elements = {
+    mainContent: document.getElementById('mainContent'),
+    radioAudio: document.getElementById('radioAudio'),
+    podcastAudio: document.getElementById('podcastAudio'),
+    currentStation: document.getElementById('currentStation'),
+    currentChannel: document.getElementById('currentChannel'),
+    playPauseBtn: document.getElementById('playPauseBtn'),
+    playPauseIcon: document.getElementById('playPauseIcon'),
+    channelSwitcher: document.getElementById('channelSwitcher'),
+    channelMenuBtn: document.getElementById('channelMenuBtn'),
+    prevChannelBtn: document.getElementById('prevChannelBtn'),
+    nextChannelBtn: document.getElementById('nextChannelBtn'),
+    bottomNavItems: document.querySelectorAll('.nav-item'),
+    radioVolume: document.getElementById('radioVolume'),
+    podcastVolume: document.getElementById('podcastVolume'),
+    themeSelect: document.getElementById('themeSelect'),
+    autoPlayToggle: document.getElementById('autoPlayToggle'),
+    notificationsToggle: document.getElementById('notificationsToggle'),
+    dataSaverToggle: document.getElementById('dataSaverToggle'),
+    currentPodcastPlayer: document.getElementById('currentPodcastPlayer'),
+    currentPodcastInfo: document.getElementById('currentPodcastInfo'),
+    podcastList: document.getElementById('podcastList'),
+    podcastLoading: document.getElementById('podcastLoading'),
+    podcastPagination: document.getElementById('podcastPagination'),
+    podcastStats: document.getElementById('podcastStats'),
+    podcastCount: document.getElementById('podcastCount'),
+    moreModal: document.getElementById('moreModal'),
+    blogHeroSlider: document.getElementById('blogHeroSlider'),
+    heroPrevBtn: document.getElementById('heroPrevBtn'),
+    heroNextBtn: document.getElementById('heroNextBtn'),
+    heroDots: document.getElementById('heroDots'),
+    blogPosts: document.getElementById('blogPosts'),
+    blogLoading: document.getElementById('blogLoading'),
+    blogPagination: document.getElementById('blogPagination')
+};
+
+// Main App Initialization
+function initMainApp() {
+    // Navigation Functions
+    function navigateTo(page) {
+        // Update state
+        appState.currentPage = page;
+        
+        // Hide all pages
+        document.querySelectorAll('.page-content').forEach(p => {
+            p.classList.remove('active');
+        });
+        
+        // Show target page
+        const targetPage = document.getElementById(`${page}-page`);
+        if (targetPage) {
+            targetPage.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // Load page content
+            loadPageContent(page);
+        }
+        
+        // Update navigation
+        updateNavigation(page);
+        
+        // Update URL
+        history.pushState({ page }, '', `?page=${page}`);
+        
+        // Close channel switcher if open
+        elements.channelSwitcher.classList.remove('active');
+        
+        // Close more modal if open
+        elements.moreModal.classList.remove('active');
+    }
+
+    function updateNavigation(page) {
+        elements.bottomNavItems.forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.page === page) {
+                item.classList.add('active');
+            }
+        });
+        
+        // Handle "More" tab
+        const morePages = ['about', 'donation', 'contact', 'settings'];
+        if (morePages.includes(page)) {
+            document.querySelector('.nav-item[data-page="more"]').classList.add('active');
+        }
+    }
+
+    // Load page content
+    function loadPageContent(page) {
+        switch (page) {
+            case 'home':
+                loadHomeHeroSlider();
+                break;
+            case 'blog':
+                loadHeroSlider();
+                loadBlogPosts();
+                break;
+            case 'podcast':
+                loadPodcasts();
+                break;
+            case 'settings':
                 loadSettings();
-                showAlert('Settings reset to default');
+                break;
+        }
+    }
+
+    // Home Hero Slider
+    function loadHomeHeroSlider() {
+        const slider = document.getElementById('homeHeroSlider');
+        const slides = slider.querySelectorAll('.hero-slide');
+        let currentSlide = 0;
+        
+        function showSlide(index) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[index].classList.add('active');
+        }
+        
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }
+        
+        // Auto rotate every 5 seconds
+        setInterval(nextSlide, 5000);
+    }
+
+    // Radio Functions with ULTRA-STABLE Playback
+    function initRadio() {
+        updateRadioDisplay();
+        
+        // Set initial volume
+        elements.radioAudio.volume = appState.settings.radioVolume;
+        elements.radioAudio.crossOrigin = 'anonymous';
+        
+        // Play/Pause button
+        elements.playPauseBtn.addEventListener('click', toggleRadioPlay);
+        
+        // Channel navigation
+        elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
+        elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
+        
+        // Channel menu
+        elements.channelMenuBtn.addEventListener('click', toggleChannelSwitcher);
+        
+        // Channel switcher options
+        document.querySelectorAll('.channel-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const channel = parseInt(this.dataset.channel);
+                if (channel !== appState.currentStation) {
+                    appState.currentStation = channel;
+                    updateRadioDisplay();
+                    updateChannelSwitcher();
+                    if (appState.radioPlaying) {
+                        playRadio();
+                    }
+                    toggleChannelSwitcher();
+                }
+            });
+        });
+        
+        // Close channel switcher when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!elements.channelSwitcher.contains(e.target) && 
+                !elements.channelMenuBtn.contains(e.target) &&
+                elements.channelSwitcher.classList.contains('active')) {
+                toggleChannelSwitcher();
             }
+        });
+        
+        // Initialize radio stability
+        initRadioStability();
+        
+        // Auto-play radio on page load
+        if (appState.settings.autoPlay && !appState.radioPlaying) {
+            setTimeout(() => {
+                playRadio();
+            }, 1000);
         }
+    }
 
-        function applyTheme(theme) {
-            // Remove all theme classes
-            document.body.classList.remove('theme-deep-blue', 'theme-dark' );
-            
-            // Add selected theme class
-            document.body.classList.add(`theme-${theme}`);
+    function updateRadioDisplay() {
+        const station = appState.stations[appState.currentStation];
+        elements.currentStation.textContent = station.name;
+        elements.currentChannel.textContent = station.description;
+        elements.radioAudio.src = station.url;
+    }
+
+    function toggleRadioPlay() {
+        if (appState.radioPlaying) {
+            // User intentionally paused
+            appState.radioShouldPlay = false;
+            pauseRadio();
+        } else {
+            // User wants to play
+            appState.radioShouldPlay = true;
+            playRadio();
         }
+    }
 
-        // Blog Hero Slider Functions - ULTRA FAST LOADING
-        async function loadHeroSlider() {
-            if (!elements.blogHeroSlider) return;
+    function switchChannel(direction) {
+        appState.currentStation = (appState.currentStation + direction + appState.stations.length) % appState.stations.length;
+        updateRadioDisplay();
+        updateChannelSwitcher();
+        if (appState.radioPlaying) {
+            playRadio();
+        }
+    }
+
+    function toggleChannelSwitcher() {
+        elements.channelSwitcher.classList.toggle('active');
+    }
+
+    function updateChannelSwitcher() {
+        document.querySelectorAll('.channel-option').forEach((option, index) => {
+            option.classList.toggle('active', index === appState.currentStation);
+        });
+    }
+
+    // More Modal Functions
+    function toggleMoreModal() {
+        elements.moreModal.classList.toggle('active');
+        
+        // Close when clicking outside
+        if (elements.moreModal.classList.contains('active')) {
+            setTimeout(() => {
+                const closeHandler = (e) => {
+                    if (!elements.moreModal.contains(e.target) && 
+                        !document.querySelector('.nav-item[data-page="more"]').contains(e.target)) {
+                        elements.moreModal.classList.remove('active');
+                        document.removeEventListener('click', closeHandler);
+                    }
+                };
+                document.addEventListener('click', closeHandler);
+            }, 0);
+        }
+    }
+
+    // Settings Functions
+    function loadSettings() {
+        // Load saved settings
+        const savedSettings = localStorage.getItem('klsr_settings');
+        if (savedSettings) {
+            appState.settings = { ...appState.settings, ...JSON.parse(savedSettings) };
+        }
+        
+        // Update UI with current settings
+        elements.themeSelect.value = appState.settings.theme;
+        elements.radioVolume.value = appState.settings.radioVolume;
+        elements.podcastVolume.value = appState.settings.podcastVolume;
+        elements.autoPlayToggle.checked = appState.settings.autoPlay;
+        elements.notificationsToggle.checked = appState.settings.notifications;
+        elements.dataSaverToggle.checked = appState.settings.dataSaver;
+        
+        // Apply theme
+        applyTheme(appState.settings.theme);
+    }
+
+    function saveSettings() {
+        // Update settings from UI
+        appState.settings.theme = elements.themeSelect.value;
+        appState.settings.radioVolume = parseFloat(elements.radioVolume.value);
+        appState.settings.podcastVolume = parseFloat(elements.podcastVolume.value);
+        appState.settings.autoPlay = elements.autoPlayToggle.checked;
+        appState.settings.notifications = elements.notificationsToggle.checked;
+        appState.settings.dataSaver = elements.dataSaverToggle.checked;
+        
+        // Save to localStorage
+        localStorage.setItem('klsr_settings', JSON.stringify(appState.settings));
+        
+        // Apply changes
+        applyTheme(appState.settings.theme);
+        elements.radioAudio.volume = appState.settings.radioVolume;
+        elements.podcastAudio.volume = appState.settings.podcastVolume;
+        
+        showAlert('Settings saved successfully!');
+        
+        // Restart radio if auto-play is enabled
+        if (appState.settings.autoPlay && !appState.radioPlaying) {
+            appState.radioShouldPlay = true;
+            setTimeout(playRadio, 500);
+        }
+    }
+
+    function resetSettings() {
+        if (confirm('Reset all settings to default?')) {
+            localStorage.removeItem('klsr_settings');
+            appState.settings = {
+                theme: 'deep-blue',
+                radioVolume: 1,
+                podcastVolume: 1,
+                autoPlay: true,
+                notifications: true,
+                dataSaver: false
+            };
+            loadSettings();
+            showAlert('Settings reset to default');
+        }
+    }
+
+    function applyTheme(theme) {
+        // Remove all theme classes
+        document.body.classList.remove('theme-deep-blue', 'theme-dark' );
+        
+        // Add selected theme class
+        document.body.classList.add(`theme-${theme}`);
+    }
+
+    // Blog Hero Slider Functions - ULTRA FAST LOADING
+    async function loadHeroSlider() {
+        if (!elements.blogHeroSlider) return;
+        
+        // Show loading immediately
+        elements.blogHeroSlider.innerHTML = `
+            <div style="
+                height: 100%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: linear-gradient(135deg, #0a0f2d 0%, #1a235c 100%);
+                color: white;
+                text-align: center;
+                padding: 40px;
+                border-radius: 12px;
+            ">
+                <div>
+                    <h3 style="font-size: 1.8rem; margin-bottom: 15px;">Latest Articles</h3>
+                    <p>Loading...</p>
+                </div>
+            </div>
+        `;
+        
+        try {
+            // Check cache first
+            const cacheKey = 'blog_hero_slides';
+            const cachedData = localStorage.getItem(cacheKey);
+            const now = Date.now();
             
-            // Show loading immediately
+            if (cachedData) {
+                const { data, timestamp } = JSON.parse(cachedData);
+                // Use cache if less than 5 minutes old
+                if (now - timestamp < 5 * 60 * 1000) {
+                    renderHeroSlider(data);
+                    return;
+                }
+            }
+            
+            // Fetch with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            
+            // Load only 3 latest posts with minimal data
+            const response = await fetch(
+                'https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts?per_page=3&_fields=id,title,date,excerpt,featured_media,_links&_embed',
+                { signal: controller.signal }
+            ).finally(() => clearTimeout(timeoutId));
+            
+            if (!response.ok) throw new Error('Failed to load hero posts');
+            
+            const posts = await response.json();
+            
+            // Cache the data
+            localStorage.setItem(cacheKey, JSON.stringify({
+                data: posts,
+                timestamp: now
+            }));
+            
+            renderHeroSlider(posts);
+            
+        } catch (error) {
+            console.error('Error loading hero slider:', error);
+            // Use fallback content
             elements.blogHeroSlider.innerHTML = `
                 <div style="
                     height: 100%;
@@ -3183,646 +3351,315 @@ function stopRadio() {
                 ">
                     <div>
                         <h3 style="font-size: 1.8rem; margin-bottom: 15px;">Latest Articles</h3>
-                        <p>Loading...</p>
+                        <p>Stay tuned for inspiring content!</p>
+                        <button onclick="loadHeroSlider()" style="
+                            margin-top: 20px;
+                            background: white;
+                            color: #333;
+                            border: none;
+                            padding: 10px 25px;
+                            border-radius: 25px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">
+                            Refresh
+                        </button>
                     </div>
                 </div>
             `;
-            
-            try {
-                // Check cache first
-                const cacheKey = 'blog_hero_slides';
-                const cachedData = localStorage.getItem(cacheKey);
-                const now = Date.now();
-                
-                if (cachedData) {
-                    const { data, timestamp } = JSON.parse(cachedData);
-                    // Use cache if less than 5 minutes old
-                    if (now - timestamp < 5 * 60 * 1000) {
-                        renderHeroSlider(data);
-                        return;
-                    }
-                }
-                
-                // Fetch with timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-                
-                // Load only 3 latest posts with minimal data
-                const response = await fetch(
-                    'https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts?per_page=3&_fields=id,title,date,excerpt,featured_media,_links&_embed',
-                    { signal: controller.signal }
-                ).finally(() => clearTimeout(timeoutId));
-                
-                if (!response.ok) throw new Error('Failed to load hero posts');
-                
-                const posts = await response.json();
-                
-                // Cache the data
-                localStorage.setItem(cacheKey, JSON.stringify({
-                    data: posts,
-                    timestamp: now
-                }));
-                
-                renderHeroSlider(posts);
-                
-            } catch (error) {
-                console.error('Error loading hero slider:', error);
-                // Use fallback content
-                elements.blogHeroSlider.innerHTML = `
-                    <div style="
-                        height: 100%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        background: linear-gradient(135deg, #0a0f2d 0%, #1a235c 100%);
-                        color: white;
-                        text-align: center;
-                        padding: 40px;
-                        border-radius: 12px;
-                    ">
-                        <div>
-                            <h3 style="font-size: 1.8rem; margin-bottom: 15px;">Latest Articles</h3>
-                            <p>Stay tuned for inspiring content!</p>
-                            <button onclick="loadHeroSlider()" style="
-                                margin-top: 20px;
-                                background: white;
-                                color: #333;
-                                border: none;
-                                padding: 10px 25px;
-                                border-radius: 25px;
-                                font-weight: 600;
-                                cursor: pointer;
-                            ">
-                                Refresh
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }
         }
+    }
 
-        function renderHeroSlider(posts) {
-            // Clear existing content
-            elements.blogHeroSlider.innerHTML = '';
-            elements.heroDots.innerHTML = '';
-            appState.heroSlides = [];
-            
-            // If no posts, show placeholder
-            if (!posts || posts.length === 0) {
-                elements.blogHeroSlider.innerHTML = `
-                    <div style="
-                        height: 100%;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        background: linear-gradient(135deg, #0a0f2d 0%, #1a235c 100%);
-                        color: white;
-                        text-align: center;
-                        padding: 40px;
-                        border-radius: 12px;
-                    ">
-                        <div>
-                            <h3 style="font-size: 1.8rem; margin-bottom: 15px;">Latest Articles</h3>
-                            <p>New content coming soon!</p>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            // Preload images
-            posts.forEach(post => {
-                const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
-                if (image) {
-                    const img = new Image();
-                    img.src = image;
-                }
-            });
-            
-            // Create slides
-            posts.forEach((post, index) => {
-                const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
-                const date = new Date(post.date).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    year: 'numeric'
-                });
-                
-                const slide = document.createElement('div');
-                slide.className = 'hero-slide';
-                slide.style.cssText = `
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
+    function renderHeroSlider(posts) {
+        // Clear existing content
+        elements.blogHeroSlider.innerHTML = '';
+        elements.heroDots.innerHTML = '';
+        appState.heroSlides = [];
+        
+        // If no posts, show placeholder
+        if (!posts || posts.length === 0) {
+            elements.blogHeroSlider.innerHTML = `
+                <div style="
                     height: 100%;
-                    opacity: ${index === 0 ? '1' : '0'};
-                    transition: opacity 0.6s ease-in-out;
-                    background-image: url('${image || 'images/herr1.webp'}');
-                    background-size: cover;
-                    background-position: center;
-                    background-repeat: no-repeat;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                `;
-                
-                slide.innerHTML = `
-                    <div class="hero-slide-content" style="
-                        position: relative;
-                        z-index: 2;
-                        color: white;
-                        max-width: 800px;
-                        width: 90%;
-                        padding: 40px;
-                        margin: 0 auto;
-                        text-align: center;
-                        text-shadow: 0 2px 10px rgba(0,0,0,0.8);
-                    ">
-                        <div style="
-                            background: rgba(0, 0, 0, 0.7);
-                            padding: 35px;
-                            border-radius: 12px;
-                            backdrop-filter: blur(8px);
-                            border: 1px solid rgba(255,255,255,0.1);
-                            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-                        ">
-                            <h3 style="
-                                margin: 0 0 20px 0;
-                                font-size: 2.2rem;
-                                line-height: 1.3;
-                                font-weight: 700;
-                                letter-spacing: -0.5px; text-shadow:1px 0px 1px #fff;
-                            ">${post.title.rendered || post.title}</h3>
-                          
-                            <div style="
-                                display: flex;
-                                justify-content: center;
-                                align-items: center;
-                                gap: 30px;
-                                flex-wrap: wrap;
-                            ">
-                                <span style="
-                                    font-size: 1rem;
-                                    opacity: 0.9;
-                                    background: rgba(255,255,255,0.15);
-                                    padding: 8px 16px;
-                                    border-radius: 20px;
-                                    backdrop-filter: blur(5px); text-shadow:1px 0px 1px #fff;
-                                ">
-                                    📅 ${date}
-                                </span>
-                                <button onclick="loadSinglePost(${post.id})" style="
-                                    background: linear-gradient(to right, #4facfe 0%, #05081a 100%);
-                                    color: white;
-                                    border: none;
-                                    padding: 12px 32px;
-                                    border-radius: 30px;
-                                    font-weight: 600;
-                                    font-size: 1rem;
-                                    cursor: pointer;
-                                    transition: all 0.3s ease;
-                                    box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
-                                    letter-spacing: 0.5px;
-                                " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 20px rgba(0, 242, 254, 0.4)'" 
-                                onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0, 242, 254, 0.3)'">
-                                    Read Article →
-                                </button>
-                            </div>
-                        </div>
+                    background: linear-gradient(135deg, #0a0f2d 0%, #1a235c 100%);
+                    color: white;
+                    text-align: center;
+                    padding: 40px;
+                    border-radius: 12px;
+                ">
+                    <div>
+                        <h3 style="font-size: 1.8rem; margin-bottom: 15px;">Latest Articles</h3>
+                        <p>New content coming soon!</p>
                     </div>
-                `;
-                
-                elements.blogHeroSlider.appendChild(slide);
-                appState.heroSlides.push(slide);
-                
-                // Create dot
-                const dot = document.createElement('button');
-                dot.className = 'hero-dot';
-                dot.style.cssText = `
-                    width: 12px;
-                    height: 12px;
-                    border-radius: 50%;
-                    border: 2px solid white;
-                    background: ${index === 0 ? 'white' : 'transparent'};
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    padding: 0;
-                `;
-                dot.onclick = () => showHeroSlide(index);
-                elements.heroDots.appendChild(dot);
-            });
-            
-            // Initialize carousel
-            appState.heroCurrentSlide = 0;
-            
-            // Set up navigation
-            elements.heroNextBtn.onclick = nextHeroSlide;
-            elements.heroPrevBtn.onclick = prevHeroSlide;
-            
-            // Start auto-sliding
-            startAutoSlide();
-            
-            // Pause on hover
-            elements.blogHeroSlider.addEventListener('mouseenter', () => {
-                clearInterval(appState.heroAutoSlideInterval);
-            });
-            
-            elements.blogHeroSlider.addEventListener('mouseleave', () => {
-                startAutoSlide();
-            });
-        }
-
-        function showHeroSlide(index) {
-            if (appState.heroSlides.length === 0) return;
-            
-            // Update current slide
-            appState.heroCurrentSlide = index;
-            
-            // Show the selected slide, hide others
-            appState.heroSlides.forEach((slide, i) => {
-                slide.style.opacity = i === index ? '1' : '0';
-            });
-            
-            // Update dots
-            const dots = document.querySelectorAll('.hero-dot');
-            dots.forEach((dot, i) => {
-                dot.style.background = i === index ? 'white' : 'transparent';
-            });
-        }
-
-        function nextHeroSlide() {
-            if (appState.heroSlides.length === 0) return;
-            
-            const nextIndex = (appState.heroCurrentSlide + 1) % appState.heroSlides.length;
-            showHeroSlide(nextIndex);
-        }
-
-        function prevHeroSlide() {
-            if (appState.heroSlides.length === 0) return;
-            
-            const prevIndex = (appState.heroCurrentSlide - 1 + appState.heroSlides.length) % appState.heroSlides.length;
-            showHeroSlide(prevIndex);
-        }
-
-        function startAutoSlide() {
-            // Clear any existing interval
-            if (appState.heroAutoSlideInterval) {
-                clearInterval(appState.heroAutoSlideInterval);
-            }
-            
-            // Start new interval if we have slides
-            if (appState.heroSlides.length > 0) {
-                appState.heroAutoSlideInterval = setInterval(() => {
-                    nextHeroSlide();
-                }, 4000); // Change slide every 4 seconds
-            }
-        }
-
-        // Blog Posts with Pagination - FIXED
-        async function loadBlogPosts(page = 1) {
-            if (!elements.blogPosts || !elements.blogLoading) return;
-            
-            elements.blogLoading.style.display = 'flex';
-            elements.blogPosts.style.display = 'none';
-            elements.blogPagination.innerHTML = '';
-            
-            try {
-                // Check cache first
-                const cacheKey = `blog_posts_page_${page}`;
-                const cachedData = localStorage.getItem(cacheKey);
-                const now = Date.now();
-                
-                if (cachedData) {
-                    const { data, totalPages, totalPosts, timestamp } = JSON.parse(cachedData);
-                    // Use cache if less than 10 minutes old
-                    if (now - timestamp < 10 * 60 * 1000) {
-                        renderBlogPosts(data, page, totalPages, totalPosts);
-                        return;
-                    }
-                }
-                
-                // Fetch with timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-                
-                const response = await fetch(
-                    `https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts?per_page=${appState.blogPerPage}&page=${page}&_embed`,
-                    { signal: controller.signal }
-                ).finally(() => clearTimeout(timeoutId));
-                
-                if (!response.ok) throw new Error('Failed to load posts');
-                
-                const posts = await response.json();
-                const totalPosts = parseInt(response.headers.get('X-WP-Total')) || 0;
-                const totalPages = parseInt(response.headers.get('X-WP-TotalPages')) || 1;
-                
-                // Cache the data
-                localStorage.setItem(cacheKey, JSON.stringify({
-                    data: posts,
-                    totalPages: totalPages,
-                    totalPosts: totalPosts,
-                    timestamp: now
-                }));
-                
-                renderBlogPosts(posts, page, totalPages, totalPosts);
-                
-            } catch (error) {
-                console.error('Error loading blog posts:', error);
-                elements.blogLoading.innerHTML = `
-                    <div class="alert alert-error">
-                        <p>Unable to load blog posts. Please check your connection and try again.</p>
-                        <button class="mdc-button mt-2" onclick="loadBlogPosts(${page})">Retry</button>
-                    </div>
-                `;
-            }
-        }
-
-        function renderBlogPosts(posts, currentPage, totalPages, totalPosts) {
-            appState.allBlogPosts = posts;
-            appState.filteredBlogPosts = posts;
-            appState.blogPage = currentPage;
-            
-            if (posts.length === 0) {
-                elements.blogPosts.innerHTML = `
-                    <div class="alert" style="grid-column: 1 / -1;">
-                        <p>No blog posts found.</p>
-                    </div>
-                `;
-            } else {
-                elements.blogPosts.innerHTML = posts.map(post => {
-                    const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
-                    const excerpt = post.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150) + '...';
-                    const date = new Date(post.date).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    });
-                    const author = post._embedded?.author?.[0]?.name || 'Admin';
-                    
-                    return `
-                        <div class="podcast-item" onclick="loadSinglePost(${post.id})">
-                            ${image ? `<img src="${image}" alt="${post.title.rendered}" loading="lazy">` : 
-                            `<div style="height: 200px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; margin-bottom: var(--mdc-spacing-md);">${post.title.rendered.charAt(0)}</div>`}
-                            <div class="podcast-meta">
-                                <span><i class="material-icons">calendar_today</i> ${date}</span>
-                                <span><i class="material-icons">person</i> ${author}</span>
-                            </div>
-                            <h3>${post.title.rendered}</h3>
-                            <p>${excerpt}</p>
-                            <button class="mdc-button text">Read More</button>
-                        </div>
-                    `;
-                }).join('');
-            }
-            
-            elements.blogLoading.style.display = 'none';
-            elements.blogPosts.style.display = 'grid';
-            
-            // Render pagination if there are multiple pages
-            if (totalPages > 1) {
-                renderPagination('blogPagination', currentPage, totalPages, (p) => {
-                    loadBlogPosts(p);
-                });
-            }
-        }
-
-        // Blog Pagination Function
-        function renderBlogPagination(currentPage, totalPages) {
-            const container = document.getElementById('blogPagination');
-            if (!container || totalPages <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-            
-            let paginationHtml = '';
-            
-            // Previous button
-            if (currentPage > 1) {
-                paginationHtml += `
-                    <button class="page-btn" onclick="loadBlogPosts(${currentPage - 1})">
-                        <i class="material-icons">chevron_left</i>
-                    </button>
-                `;
-            }
-            
-            // Page numbers
-            const maxVisible = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-            
-            if (endPage - startPage + 1 < maxVisible) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                paginationHtml += `
-                    <button class="page-btn ${i === currentPage ? 'active' : ''}" 
-                            onclick="loadBlogPosts(${i})">
-                        ${i}
-                    </button>
-                `;
-            }
-            
-            // Next button
-            if (currentPage < totalPages) {
-                paginationHtml += `
-                    <button class="page-btn" onclick="loadBlogPosts(${currentPage + 1})">
-                        <i class="material-icons">chevron_right</i>
-                    </button>
-                `;
-            }
-            
-            container.innerHTML = paginationHtml;
-        }
-
-        async function loadSinglePost(postId) {
-            navigateTo('single-blog');
-            
-            const container = document.getElementById('singlePostContent');
-            container.innerHTML = `
-                <div class="loading-spinner">
-                    <div class="spinner"></div>
-                    <p>Loading post...</p>
                 </div>
             `;
-            
-            try {
-                // Check cache first
-                const cacheKey = `blog_post_${postId}`;
-                const cachedData = localStorage.getItem(cacheKey);
-                const now = Date.now();
-                
-                if (cachedData) {
-                    const { data, timestamp } = JSON.parse(cachedData);
-                    // Use cache if less than 30 minutes old
-                    if (now - timestamp < 30 * 60 * 1000) {
-                        renderSinglePost(data);
-                        return;
-                    }
-                }
-                
-                const response = await fetch(
-                    `https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts/${postId}?_embed`
-                );
-                
-                if (!response.ok) throw new Error('Failed to load post');
-                
-                const post = await response.json();
-                
-                // Cache the data
-                localStorage.setItem(cacheKey, JSON.stringify({
-                    data: post,
-                    timestamp: now
-                }));
-                
-                renderSinglePost(post);
-                
-            } catch (error) {
-                console.error('Error loading post:', error);
-                container.innerHTML = `
-                    <div class="alert alert-error">
-                        <p>Unable to load this post. Please try again later.</p>
-                        <button class="mdc-button mt-2" onclick="navigateTo('blog')">Back to Blog</button>
-                    </div>
-                `;
-            }
+            return;
         }
-
-        function renderSinglePost(post) {
-            const container = document.getElementById('singlePostContent');
+        
+        // Preload images
+        posts.forEach(post => {
             const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+            if (image) {
+                const img = new Image();
+                img.src = image;
+            }
+        });
+        
+        // Create slides
+        posts.forEach((post, index) => {
+            const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
             const date = new Date(post.date).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
             });
-            const author = post._embedded?.author?.[0]?.name || 'Admin';
-            const currentUrl = window.location.origin + window.location.pathname + `?post=${post.id}`;
-            const postTitle = post.title.rendered;
-            const postExcerpt = post.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150) + '...';
             
-            container.innerHTML = `
-                <div class="mdc-card">
-                    <button class="mdc-button text mb-3" onclick="navigateTo('blog')">
-                        <i class="material-icons">arrow_back</i>
-                        Back to Blog
-                    </button>
-                    
-                    ${image ? `<img src="${image}" alt="${postTitle}" style="width: 100%; height: 300px; object-fit: cover; border-radius: var(--mdc-border-radius); margin-bottom: var(--mdc-spacing-lg);" loading="lazy">` : 
-                      `<div style="height: 300px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem; margin-bottom: var(--mdc-spacing-lg);">${postTitle.charAt(0)}</div>`}
-                    
-                    <div class="card-content">
-                        <div class="podcast-meta">
-                            <span><i class="material-icons">calendar_today</i> ${date}</span>
-                            <span><i class="material-icons">person</i> ${author}</span>
-                        </div>
-                        
-                        <h1>${postTitle}</h1>
-                        <div class="post-content">${post.content.rendered}</div>
-                        
-                        <!-- Share Buttons -->
-                        <div class="mt-4">
-                            <h3>Share this post</h3>
-                            <div class="share-buttons">
-                                <button class="share-btn share-facebook" onclick="sharePost('facebook', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
-                                    <i class="material-icons">facebook</i>
-                                    Facebook
-                                </button>
-                                <button class="share-btn share-twitter" onclick="sharePost('twitter', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
-                                    <i class="material-icons">X</i>
-                                    Twitter
-                                </button>
-                                <button class="share-btn share-whatsapp" onclick="sharePost('whatsapp', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
-                                    <i class="material-icons">whatshot</i>
-                                    WhatsApp
-                                </button>
-                                <button class="share-btn share-telegram" onclick="sharePost('telegram', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
-                                    <i class="material-icons">telegram</i>
-                                    Telegram
-                                </button>
-                                <button class="share-btn share-linkedin" onclick="sharePost('linkedin', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
-                                    <i class="material-icons">link</i>
-                                    LinkedIn
-                                </button>
-                                <button class="share-btn share-email" onclick="sharePost('email', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
-                                    <i class="material-icons">email</i>
-                                    Email
-                                </button>
-                                <button class="share-btn share-copy" onclick="copyToClipboard('${currentUrl}')">
-                                    <i class="material-icons">content_copy</i>
-                                    Copy Link
-                                </button>
-                            </div>
+            const slide = document.createElement('div');
+            slide.className = 'hero-slide';
+            slide.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                opacity: ${index === 0 ? '1' : '0'};
+                transition: opacity 0.6s ease-in-out;
+                background-image: url('${image || 'images/herr1.webp'}');
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            `;
+            
+            slide.innerHTML = `
+                <div class="hero-slide-content" style="
+                    position: relative;
+                    z-index: 2;
+                    color: white;
+                    max-width: 800px;
+                    width: 90%;
+                    padding: 40px;
+                    margin: 0 auto;
+                    text-align: center;
+                    text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+                ">
+                    <div style="
+                        background: rgba(0, 0, 0, 0.7);
+                        padding: 35px;
+                        border-radius: 12px;
+                        backdrop-filter: blur(8px);
+                        border: 1px solid rgba(255,255,255,0.1);
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                    ">
+                        <h3 style="
+                            margin: 0 0 20px 0;
+                            font-size: 2.2rem;
+                            line-height: 1.3;
+                            font-weight: 700;
+                            letter-spacing: -0.5px; text-shadow:1px 0px 1px #fff;
+                        ">${post.title.rendered || post.title}</h3>
+                      
+                        <div style="
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            gap: 30px;
+                            flex-wrap: wrap;
+                        ">
+                            <span style="
+                                font-size: 1rem;
+                                opacity: 0.9;
+                                background: rgba(255,255,255,0.15);
+                                padding: 8px 16px;
+                                border-radius: 20px;
+                                backdrop-filter: blur(5px); text-shadow:1px 0px 1px #fff;
+                            ">
+                                📅 ${date}
+                            </span>
+                            <button onclick="loadSinglePost(${post.id})" style="
+                                background: linear-gradient(to right, #4facfe 0%, #05081a 100%);
+                                color: white;
+                                border: none;
+                                padding: 12px 32px;
+                                border-radius: 30px;
+                                font-weight: 600;
+                                font-size: 1rem;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                                box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
+                                letter-spacing: 0.5px;
+                            " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 20px rgba(0, 242, 254, 0.4)'" 
+                            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0, 242, 254, 0.3)'">
+                                Read Article →
+                            </button>
                         </div>
                     </div>
                 </div>
             `;
-        }
+            
+            elements.blogHeroSlider.appendChild(slide);
+            appState.heroSlides.push(slide);
+            
+            // Create dot
+            const dot = document.createElement('button');
+            dot.className = 'hero-dot';
+            dot.style.cssText = `
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                border: 2px solid white;
+                background: ${index === 0 ? 'white' : 'transparent'};
+                cursor: pointer;
+                transition: all 0.3s ease;
+                padding: 0;
+            `;
+            dot.onclick = () => showHeroSlide(index);
+            elements.heroDots.appendChild(dot);
+        });
+        
+        // Initialize carousel
+        appState.heroCurrentSlide = 0;
+        
+        // Set up navigation
+        elements.heroNextBtn.onclick = nextHeroSlide;
+        elements.heroPrevBtn.onclick = prevHeroSlide;
+        
+        // Start auto-sliding
+        startAutoSlide();
+        
+        // Pause on hover
+        elements.blogHeroSlider.addEventListener('mouseenter', () => {
+            clearInterval(appState.heroAutoSlideInterval);
+        });
+        
+        elements.blogHeroSlider.addEventListener('mouseleave', () => {
+            startAutoSlide();
+        });
+    }
 
-        // Share Post Function
-        function sharePost(platform, url, title, excerpt) {
-            const decodedUrl = decodeURIComponent(url);
-            const decodedTitle = decodeURIComponent(title);
-            const decodedExcerpt = decodeURIComponent(excerpt);
+    function showHeroSlide(index) {
+        if (appState.heroSlides.length === 0) return;
+        
+        // Update current slide
+        appState.heroCurrentSlide = index;
+        
+        // Show the selected slide, hide others
+        appState.heroSlides.forEach((slide, i) => {
+            slide.style.opacity = i === index ? '1' : '0';
+        });
+        
+        // Update dots
+        const dots = document.querySelectorAll('.hero-dot');
+        dots.forEach((dot, i) => {
+            dot.style.background = i === index ? 'white' : 'transparent';
+        });
+    }
+
+    function nextHeroSlide() {
+        if (appState.heroSlides.length === 0) return;
+        
+        const nextIndex = (appState.heroCurrentSlide + 1) % appState.heroSlides.length;
+        showHeroSlide(nextIndex);
+    }
+
+    function prevHeroSlide() {
+        if (appState.heroSlides.length === 0) return;
+        
+        const prevIndex = (appState.heroCurrentSlide - 1 + appState.heroSlides.length) % appState.heroSlides.length;
+        showHeroSlide(prevIndex);
+    }
+
+    function startAutoSlide() {
+        // Clear any existing interval
+        if (appState.heroAutoSlideInterval) {
+            clearInterval(appState.heroAutoSlideInterval);
+        }
+        
+        // Start new interval if we have slides
+        if (appState.heroSlides.length > 0) {
+            appState.heroAutoSlideInterval = setInterval(() => {
+                nextHeroSlide();
+            }, 4000); // Change slide every 4 seconds
+        }
+    }
+
+    // Blog Posts with Pagination - FIXED
+    async function loadBlogPosts(page = 1) {
+        if (!elements.blogPosts || !elements.blogLoading) return;
+        
+        elements.blogLoading.style.display = 'flex';
+        elements.blogPosts.style.display = 'none';
+        elements.blogPagination.innerHTML = '';
+        
+        try {
+            // Check cache first
+            const cacheKey = `blog_posts_page_${page}`;
+            const cachedData = localStorage.getItem(cacheKey);
+            const now = Date.now();
             
-            let shareUrl = '';
-            
-            switch(platform) {
-                case 'facebook':
-                    shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${title}`;
-                    break;
-                case 'twitter':
-                    shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}&hashtags=KLSR,Gospel`;
-                    break;
-                case 'whatsapp':
-                    shareUrl = `https://wa.me/?text=${title}%20${url}`;
-                    break;
-                case 'telegram':
-                    shareUrl = `https://t.me/share/url?url=${url}&text=${title}`;
-                    break;
-                case 'linkedin':
-                    shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
-                    break;
-                case 'email':
-                    shareUrl = `mailto:?subject=${title}&body=${decodedExcerpt}%0A%0ARead more: ${decodedUrl}`;
-                    break;
-                default:
+            if (cachedData) {
+                const { data, totalPages, totalPosts, timestamp } = JSON.parse(cachedData);
+                // Use cache if less than 10 minutes old
+                if (now - timestamp < 10 * 60 * 1000) {
+                    renderBlogPosts(data, page, totalPages, totalPosts);
                     return;
+                }
             }
             
-            if (platform === 'email') {
-                window.location.href = shareUrl;
-            } else {
-                window.open(shareUrl, '_blank', 'noopener,noreferrer');
-            }
-        }
-
-        function searchBlogPosts() {
-            const searchTerm = document.getElementById('blogSearch').value.toLowerCase();
-            if (!searchTerm) {
-                appState.filteredBlogPosts = appState.allBlogPosts;
-            } else {
-                appState.filteredBlogPosts = appState.allBlogPosts.filter(post => 
-                    post.title.rendered.toLowerCase().includes(searchTerm) ||
-                    post.excerpt.rendered.toLowerCase().includes(searchTerm)
-                );
-            }
-            displayFilteredBlogPosts();
-        }
-
-        function displayFilteredBlogPosts() {
-            const container = document.getElementById('blogPosts');
-            if (appState.filteredBlogPosts.length === 0) {
-                container.innerHTML = `
-                    <div class="alert" style="grid-column: 1 / -1;">
-                        <p>No articles found matching your search. Try different keywords.</p>
-                    </div>
-                `;
-                return;
-            }
+            // Fetch with timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
             
-            container.innerHTML = appState.filteredBlogPosts.map(post => {
+            const response = await fetch(
+                `https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts?per_page=${appState.blogPerPage}&page=${page}&_embed`,
+                { signal: controller.signal }
+            ).finally(() => clearTimeout(timeoutId));
+            
+            if (!response.ok) throw new Error('Failed to load posts');
+            
+            const posts = await response.json();
+            const totalPosts = parseInt(response.headers.get('X-WP-Total')) || 0;
+            const totalPages = parseInt(response.headers.get('X-WP-TotalPages')) || 1;
+            
+            // Cache the data
+            localStorage.setItem(cacheKey, JSON.stringify({
+                data: posts,
+                totalPages: totalPages,
+                totalPosts: totalPosts,
+                timestamp: now
+            }));
+            
+            renderBlogPosts(posts, page, totalPages, totalPosts);
+            
+        } catch (error) {
+            console.error('Error loading blog posts:', error);
+            elements.blogLoading.innerHTML = `
+                <div class="alert alert-error">
+                    <p>Unable to load blog posts. Please check your connection and try again.</p>
+                    <button class="mdc-button mt-2" onclick="loadBlogPosts(${page})">Retry</button>
+                </div>
+            `;
+        }
+    }
+
+    function renderBlogPosts(posts, currentPage, totalPages, totalPosts) {
+        appState.allBlogPosts = posts;
+        appState.filteredBlogPosts = posts;
+        appState.blogPage = currentPage;
+        
+        if (posts.length === 0) {
+            elements.blogPosts.innerHTML = `
+                <div class="alert" style="grid-column: 1 / -1;">
+                    <p>No blog posts found.</p>
+                </div>
+            `;
+        } else {
+            elements.blogPosts.innerHTML = posts.map(post => {
                 const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
                 const excerpt = post.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150) + '...';
                 const date = new Date(post.date).toLocaleDateString('en-US', {
@@ -3835,7 +3672,7 @@ function stopRadio() {
                 return `
                     <div class="podcast-item" onclick="loadSinglePost(${post.id})">
                         ${image ? `<img src="${image}" alt="${post.title.rendered}" loading="lazy">` : 
-                          `<div style="height: 200px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; margin-bottom: var(--mdc-spacing-md);">${post.title.rendered.charAt(0)}</div>`}
+                        `<div style="height: 200px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; margin-bottom: var(--mdc-spacing-md);">${post.title.rendered.charAt(0)}</div>`}
                         <div class="podcast-meta">
                             <span><i class="material-icons">calendar_today</i> ${date}</span>
                             <span><i class="material-icons">person</i> ${author}</span>
@@ -3846,593 +3683,868 @@ function stopRadio() {
                     </div>
                 `;
             }).join('');
-            
-            // Hide pagination for search results
-            document.getElementById('blogPagination').innerHTML = '';
         }
-
-        // PODCAST FUNCTIONS with PAGINATION FIXED
-        async function loadPodcasts(page = 1) {
-            elements.podcastLoading.style.display = 'flex';
-            elements.podcastList.style.display = 'none';
-            elements.podcastPagination.style.display = 'none';
-            elements.currentPodcastPlayer.style.display = 'none';
-            
-            try {
-                // Use your RSS feed URL
-                const rssUrl = "https://anchor.fm/s/1d6ad87c/podcast/rss";
-                
-                // Check cache first
-                const cacheKey = `podcasts_all`;
-                const cachedData = localStorage.getItem(cacheKey);
-                const now = Date.now();
-                
-                let allEpisodes = [];
-                let podcastInfo = {};
-                
-                if (cachedData) {
-                    const { data, info, timestamp } = JSON.parse(cachedData);
-                    // Use cache if less than 1 hour old
-                    if (now - timestamp < 60 * 60 * 1000) {
-                        allEpisodes = data;
-                        podcastInfo = info;
-                    }
-                }
-                
-                if (allEpisodes.length === 0) {
-                    // Fetch RSS XML with timeout
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-                    
-                    const response = await fetch(rssUrl, { signal: controller.signal })
-                        .finally(() => clearTimeout(timeoutId));
-                    
-                    if (!response.ok) throw new Error('Failed to load RSS feed');
-                    
-                    const rssText = await response.text();
-                    
-                    // Parse RSS XML
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(rssText, "text/xml");
-                    
-                    // Get podcast info
-                    const channel = xmlDoc.querySelector('channel');
-                    const podcastTitle = channel.querySelector('title')?.textContent || 'Kingdom Lifestyle Podcast';
-                    const podcastDescription = channel.querySelector('description')?.textContent || 'Welcome to Kingdom Lifestyle Podcast.';
-                    
-                    podcastInfo = {
-                        title: podcastTitle,
-                        description: podcastDescription
-                    };
-                    
-                    // Get all items
-                    const items = xmlDoc.querySelectorAll('item');
-                    
-                    // Process podcast episodes
-                    allEpisodes = Array.from(items).map((item, index) => {
-                        // Extract data from RSS item
-                        const title = item.querySelector('title')?.textContent || `Episode ${index + 1}`;
-                        const description = item.querySelector('description')?.textContent || '';
-                        const pubDate = item.querySelector('pubDate')?.textContent || new Date().toISOString();
-                        const itunesImage = item.querySelector('itunes\\:image, image')?.getAttribute('href');
-                        const enclosure = item.querySelector('enclosure');
-                        const audioUrl = enclosure?.getAttribute('url') || '';
-                        const duration = item.querySelector('itunes\\:duration')?.textContent || '';
-                        
-                        // Clean description
-                        const cleanDescription = description.replace(/<[^>]+>/g, '').substring(0, 200) + '...';
-                        
-                        // Use podcast image or fallback
-                        const imageUrl = itunesImage || 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80';
-                        
-                        return {
-                            id: index + 1,
-                            title: title,
-                            description: cleanDescription,
-                            fullDescription: description,
-                            pubDate: pubDate,
-                            audio: audioUrl,
-                            duration: duration,
-                            image: imageUrl,
-                            author: item.querySelector('author')?.textContent || 'Kingdom Lifestyle Radio'
-                        };
-                    }).filter(episode => episode.audio); // Only include episodes with audio
-                    
-                    // Cache the data
-                    localStorage.setItem(cacheKey, JSON.stringify({
-                        data: allEpisodes,
-                        info: podcastInfo,
-                        timestamp: now
-                    }));
-                }
-                
-                // Update app state
-                appState.podcastData.episodes = allEpisodes;
-                appState.podcastData.totalEpisodes = allEpisodes.length;
-                appState.podcastData.totalPages = Math.ceil(allEpisodes.length / appState.podcastPerPage);
-                appState.podcastData.currentPage = page;
-                appState.podcastData.podcastInfo = podcastInfo;
-                
-                renderPodcasts(allEpisodes, page, Math.ceil(allEpisodes.length / appState.podcastPerPage), allEpisodes.length);
-                
-            } catch (error) {
-                console.error('Error loading podcasts:', error);
-                
-                // Fallback to demo data
-                const demoEpisodes = [
-                    {
-                        id: 1,
-                        title: "Morning Devotion - Start Your Day Right",
-                        description: "Begin your day with spiritual nourishment and biblical insights for a productive and blessed day.",
-                        fullDescription: "Begin your day with spiritual nourishment and biblical insights for a productive and blessed day. This episode will guide you through morning prayers and scripture readings.",
-                        pubDate: new Date().toISOString(),
-                        audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-                        duration: "15:30",
-                        image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-                        author: "Pastor Olalekan"
-                    },
-                    {
-                        id: 2,
-                        title: "Faith in Action - Practical Christianity",
-                        description: "Learn how to apply biblical principles in your daily life with practical examples and real-life applications.",
-                        fullDescription: "Learn how to apply biblical principles in your daily life with practical examples and real-life applications. Discover how faith can transform your everyday decisions and relationships.",
-                        pubDate: new Date(Date.now() - 86400000).toISOString(),
-                        audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
-                        duration: "22:15",
-                        image: "https://images.unsplash.com/photo-1544717305-99670f9c28f3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-                        author: "Kingdom Team"
-                    },
-                    {
-                        id: 3,
-                        title: "Prayer Warriors - Intercessory Insights",
-                        description: "Deepen your prayer life with powerful teaching on intercession, spiritual warfare, and effective prayer strategies.",
-                        fullDescription: "Deepen your prayer life with powerful teaching on intercession, spiritual warfare, and effective prayer strategies. Learn how to pray effectively for yourself, your family, and your community.",
-                        pubDate: new Date(Date.now() - 172800000).toISOString(),
-                        audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
-                        duration: "18:45",
-                        image: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
-                        author: "Prayer Ministry"
-                    }
-                ];
-                
-                appState.podcastData.episodes = demoEpisodes;
-                appState.podcastData.totalEpisodes = demoEpisodes.length;
-                appState.podcastData.totalPages = 1;
-                appState.podcastData.currentPage = 1;
-                
-                // Update podcast stats
-                if (elements.podcastStats && elements.podcastCount) {
-                    elements.podcastStats.style.display = 'block';
-                    elements.podcastCount.textContent = demoEpisodes.length;
-                }
-                
-                renderPodcasts(demoEpisodes, 1, 1, demoEpisodes.length);
-                
-                 
-            }
-        }
-
-        function renderPodcasts(allEpisodes, currentPage, totalPages, totalEpisodes) {
-            // Update podcast stats
-            if (elements.podcastStats && elements.podcastCount) {
-                elements.podcastStats.style.display = 'block';
-                elements.podcastCount.textContent = totalEpisodes;
-            }
-            
-            // Calculate pagination
-            const start = (currentPage - 1) * appState.podcastPerPage;
-            const end = start + appState.podcastPerPage;
-            const pageEpisodes = allEpisodes.slice(start, end);
-            
-            // Display podcast list
-            if (pageEpisodes.length === 0) {
-                elements.podcastList.innerHTML = `
-                    <div class="alert" style="width: 100%;">
-                        <p>No podcast episodes available at the moment. Please check back later.</p>
-                    </div>
-                `;
-            } else {
-                elements.podcastList.innerHTML = pageEpisodes.map(podcast => {
-                    const date = new Date(podcast.pubDate).toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric'
-                    });
-                    
-                    return `
-                        <div class="podcast-item" onclick="playPodcast(${podcast.id})">
-                            <img src="${podcast.image}" alt="${podcast.title}" loading="lazy" style="height:100%; width:100%;" onerror="this.src='https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80'">
-                            <div class="podcast-meta">
-                                <span><i class="material-icons">calendar_today</i> ${date}</span>
-                                ${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}
-                            </div>
-                            <h3>${podcast.title}</h3>
-                            <p style="  word-break: break-all;
-  word-wrap: break-word;
-  max-width: 18em; font-size:14px;
- ">${podcast.description}</p>
-                            <div class="card-actions">
-                                <button class="mdc-button">
-                                    <i class="material-icons">play_arrow</i>
-                                    Play Episode
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-            
-            // Show elements
-            elements.podcastLoading.style.display = 'none';
-            elements.podcastList.style.display = 'block';
-            
-            // Render pagination if needed
-            if (totalPages > 1) {
-                elements.podcastPagination.style.display = 'flex';
-                renderPagination('podcastPagination', currentPage, totalPages, (p) => {
-                    loadPodcasts(p);
-                });
-            }
-        }
-
-        // Podcast Pagination Function
-        function renderPodcastPagination(currentPage, totalPages) {
-            const container = document.getElementById('podcastPagination');
-            if (!container || totalPages <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-            
-            let paginationHtml = '';
-            
-            // Previous button
-            if (currentPage > 1) {
-                paginationHtml += `
-                    <button class="page-btn" onclick="loadPodcasts(${currentPage - 1})">
-                        <i class="material-icons">chevron_left</i>
-                    </button>
-                `;
-            }
-            
-            // Page numbers
-            const maxVisible = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-            
-            if (endPage - startPage + 1 < maxVisible) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                paginationHtml += `
-                    <button class="page-btn ${i === currentPage ? 'active' : ''}" 
-                            onclick="loadPodcasts(${i})">
-                        ${i}
-                    </button>
-                `;
-            }
-            
-            // Next button
-            if (currentPage < totalPages) {
-                paginationHtml += `
-                    <button class="page-btn" onclick="loadPodcasts(${currentPage + 1})">
-                        <i class="material-icons">chevron_right</i>
-                    </button>
-                `;
-            }
-            
-            container.innerHTML = paginationHtml;
-        }
-
-        function playPodcast(podcastId) {
-            const podcast = appState.podcastData.episodes.find(p => p.id === podcastId);
-            if (!podcast || !podcast.audio) {
-                 
-            }
-            
-            // Update current podcast
-            appState.currentPodcast = podcast;
-            
-            // Update player display
-            elements.currentPodcastPlayer.style.display = 'block';
-            elements.currentPodcastInfo.innerHTML = `
-                <h4>${podcast.title}</h4>
-                <p>${podcast.fullDescription || podcast.description}</p>
-                <div class="podcast-meta">
-                    <span><i class="material-icons">calendar_today</i> ${new Date(podcast.pubDate).toLocaleDateString()}</span>
-                    ${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}
-                    <span><i class="material-icons">person</i> ${podcast.author}</span>
-                </div>
-            `;
-            
-            // Set audio source and play
-            elements.podcastAudio.src = podcast.audio;
-            elements.podcastAudio.volume = appState.settings.podcastVolume;
-            
-            elements.podcastAudio.play()
-                .then(() => showAlert(`Now playing: ${podcast.title}`))
-                .catch(e => {
-                    console.error('Playback error:', e);
-                     
-                });
-        }
-
-        // Generic Pagination Function
-        function renderPagination(containerId, currentPage, totalPages, callback) {
-            const container = document.getElementById(containerId);
-            if (!container || totalPages <= 1) {
-                container.innerHTML = '';
-                return;
-            }
-            
-            let paginationHtml = '';
-            
-            // Previous button
-            if (currentPage > 1) {
-                paginationHtml += `
-                    <button class="page-btn" onclick="(${callback.toString()})(${currentPage - 1})">
-                        <i class="material-icons">chevron_left</i>
-                    </button>
-                `;
-            }
-            
-            // Page numbers
-            const maxVisible = 5;
-            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-            
-            if (endPage - startPage + 1 < maxVisible) {
-                startPage = Math.max(1, endPage - maxVisible + 1);
-            }
-            
-            for (let i = startPage; i <= endPage; i++) {
-                paginationHtml += `
-                    <button class="page-btn ${i === currentPage ? 'active' : ''}" 
-                            onclick="(${callback.toString()})(${i})">
-                        ${i}
-                    </button>
-                `;
-            }
-            
-            // Next button
-            if (currentPage < totalPages) {
-                paginationHtml += `
-                    <button class="page-btn" onclick="(${callback.toString()})(${currentPage + 1})">
-                        <i class="material-icons">chevron_right</i>
-                    </button>
-                `;
-            }
-            
-            container.innerHTML = paginationHtml;
-        }
-
-        // Utility Functions
-        function showAlert(message, type = 'success') {
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type}`;
-            alertDiv.innerHTML = `
-                <p>${message}</p>
-                <button class="mdc-button text" onclick="this.parentElement.remove()" style="float: right; margin-top: -8px;">
-                    <i class="material-icons">close</i>
-                </button>
-            `;
-            
-            const mainContent = document.querySelector('.main-content');
-            if (mainContent.firstChild) {
-                mainContent.insertBefore(alertDiv, mainContent.firstChild);
-            } else {
-                mainContent.appendChild(alertDiv);
-            }
-            
-            setTimeout(() => {
-                if (alertDiv.parentElement) {
-                    alertDiv.remove();
-                }
-            }, 5000);
-        }
-
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text)
-                .then(() => showAlert('Copied to clipboard!'))
-                .catch(() => showAlert('Failed to copy', 'error'));
-        }
-
-        // Form Handlers
-        document.getElementById('prayerForm')?.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = {
-                name: document.getElementById('prayerName').value,
-                email: document.getElementById('prayerEmail').value,
-                phone: document.getElementById('prayerPhone').value,
-                request: document.getElementById('prayerRequest').value,
-                followup: document.getElementById('prayerFollowup').checked
-            };
-            
-            try {
-                await emailjs.send('service_bg462kr', 'template_6pyapsf', {
-                    to_email: 'support@kingdomlifestyleradio.com',
-                    from_name: formData.name,
-                    from_email: formData.email,
-                    phone: formData.phone,
-                    message: formData.request,
-                    followup: formData.followup ? 'Yes' : 'No'
-                });
-                
-                showAlert('Prayer request submitted! Our team will pray for you.');
-                this.reset();
-                
-            } catch (error) {
-                console.error('Email error:', error);
-                showAlert('Thank you for your prayer request. Our team will pray for you.', 'success');
-                this.reset();
-            }
-        });
-
-        document.getElementById('contactForm')?.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            const formData = {
-                name: document.getElementById('contactName').value,
-                email: document.getElementById('contactEmail').value,
-                subject: document.getElementById('contactSubject').value,
-                message: document.getElementById('contactMessage').value
-            };
-            
-            try {
-                await emailjs.send('service_bg462kr', 'template_6pyapsf', {
-                    to_email: 'robinlaura101@gmail.com',
-                    from_name: formData.name,
-                    from_email: formData.email,
-                    subject: formData.subject,
-                    message: formData.message
-                });
-                
-                showAlert('Message sent! We\'ll get back to you soon.');
-                this.reset();
-                
-            } catch (error) {
-                console.error('Email error:', error);
-                showAlert('Thank you for your message. We\'ll be in touch soon.', 'success');
-                this.reset();
-            }
-        });
-
-        // Performance Optimizations - CACHES FEATURES
-        function setupPerformanceOptimizations() {
-            // Service Worker for caching (if supported)
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js').catch(console.error);
-            }
-            
-            // Preload critical images
-            const criticalImages = [
-                'images/logo.png',
-                'images/herr1.webp',
-                'images/herr2.webp',
-                'images/herr3.webp',
-                'images/herr4.webp'
-            ];
-            
-            criticalImages.forEach(src => {
-                const link = document.createElement('link');
-                link.rel = 'preload';
-                link.as = 'image';
-                link.href = src;
-                document.head.appendChild(link);
-            });
-            
-            // Lazy load images
-            if ('IntersectionObserver' in window) {
-                const imageObserver = new IntersectionObserver((entries) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            const img = entry.target;
-                            img.src = img.dataset.src;
-                            img.classList.remove('lazy');
-                            imageObserver.unobserve(img);
-                        }
-                    });
-                });
-                
-                document.querySelectorAll('img[data-src]').forEach(img => {
-                    imageObserver.observe(img);
-                });
-            }
-        }
-
-        // Event Listeners
-        function setupEventListeners() {
-            // Initialize radio
-            initRadio();
-            
-            // Load settings
-            loadSettings();
-            
-            // Navigation events
-            elements.bottomNavItems.forEach(item => {
-                item.addEventListener('click', function() {
-                    const page = this.dataset.page;
-                    if (page === 'more') {
-                        toggleMoreModal();
-                    } else {
-                        navigateTo(page);
-                    }
-                });
-            });
-            
-            // Settings button in header
-            document.getElementById('settingsBtn').addEventListener('click', () => {
-                navigateTo('settings');
-            });
-            
-            // Search button
-            document.getElementById('searchBtn').addEventListener('click', () => {
-                navigateTo('blog');
-                setTimeout(() => {
-                    document.getElementById('blogSearch').focus();
-                }, 300);
-            });
-            
-            // Volume controls
-            elements.radioVolume.addEventListener('input', function() {
-                appState.settings.radioVolume = parseFloat(this.value);
-                elements.radioAudio.volume = appState.settings.radioVolume;
-            });
-            
-            elements.podcastVolume.addEventListener('input', function() {
-                appState.settings.podcastVolume = parseFloat(this.value);
-                elements.podcastAudio.volume = appState.settings.podcastVolume;
-            });
-            
-            // Handle URL parameters
-            const urlParams = new URLSearchParams(window.location.search);
-            const page = urlParams.get('page') || 'home';
-            const postId = urlParams.get('post');
-            
-            if (postId) {
-                loadSinglePost(postId);
-            } else {
-                navigateTo(page);
-            }
-            
-            // Handle back/forward navigation
-            window.addEventListener('popstate', function(event) {
-                if (event.state && event.state.page) {
-                    navigateTo(event.state.page);
-                }
-            });
-            
-            // Setup performance optimizations
-            setupPerformanceOptimizations();
-        }
-
-        // Expose functions to global scope
-        window.navigateTo = navigateTo;
-        window.loadSinglePost = loadSinglePost;
-        window.toggleRadioPlay = toggleRadioPlay;
-        window.copyToClipboard = copyToClipboard;
-        window.sharePost = sharePost;
-        window.playPodcast = playPodcast;
-        window.searchBlogPosts = searchBlogPosts;
-        window.saveSettings = saveSettings;
-        window.resetSettings = resetSettings;
-        window.toggleMoreModal = toggleMoreModal;
-        window.loadHeroSlider = loadHeroSlider;
-        window.loadBlogPosts = loadBlogPosts;
-        window.loadPodcasts = loadPodcasts;
-
-        // Setup event listeners
-        setupEventListeners();
         
-        // Load blog hero slider when blog page is loaded
-        if (appState.currentPage === 'blog') {
-            loadHeroSlider();
+        elements.blogLoading.style.display = 'none';
+        elements.blogPosts.style.display = 'grid';
+        
+        // Render pagination if there are multiple pages
+        if (totalPages > 1) {
+            renderPagination('blogPagination', currentPage, totalPages, (p) => {
+                loadBlogPosts(p);
+            });
         }
     }
 
-    // Start the loading screen when page loads
-    document.addEventListener('DOMContentLoaded', initLoadingScreen);
+    // Blog Pagination Function
+    function renderBlogPagination(currentPage, totalPages) {
+        const container = document.getElementById('blogPagination');
+        if (!container || totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        let paginationHtml = '';
+        
+        // Previous button
+        if (currentPage > 1) {
+            paginationHtml += `
+                <button class="page-btn" onclick="loadBlogPosts(${currentPage - 1})">
+                    <i class="material-icons">chevron_left</i>
+                </button>
+            `;
+        }
+        
+        // Page numbers
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        
+        if (endPage - startPage + 1 < maxVisible) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `
+                <button class="page-btn ${i === currentPage ? 'active' : ''}" 
+                        onclick="loadBlogPosts(${i})">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        // Next button
+        if (currentPage < totalPages) {
+            paginationHtml += `
+                <button class="page-btn" onclick="loadBlogPosts(${currentPage + 1})">
+                    <i class="material-icons">chevron_right</i>
+                </button>
+            `;
+        }
+        
+        container.innerHTML = paginationHtml;
+    }
+
+    async function loadSinglePost(postId) {
+        navigateTo('single-blog');
+        
+        const container = document.getElementById('singlePostContent');
+        container.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading post...</p>
+            </div>
+        `;
+        
+        try {
+            // Check cache first
+            const cacheKey = `blog_post_${postId}`;
+            const cachedData = localStorage.getItem(cacheKey);
+            const now = Date.now();
+            
+            if (cachedData) {
+                const { data, timestamp } = JSON.parse(cachedData);
+                // Use cache if less than 30 minutes old
+                if (now - timestamp < 30 * 60 * 1000) {
+                    renderSinglePost(data);
+                    return;
+                }
+            }
+            
+            const response = await fetch(
+                `https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts/${postId}?_embed`
+            );
+            
+            if (!response.ok) throw new Error('Failed to load post');
+            
+            const post = await response.json();
+            
+            // Cache the data
+            localStorage.setItem(cacheKey, JSON.stringify({
+                data: post,
+                timestamp: now
+            }));
+            
+            renderSinglePost(post);
+            
+        } catch (error) {
+            console.error('Error loading post:', error);
+            container.innerHTML = `
+                <div class="alert alert-error">
+                    <p>Unable to load this post. Please try again later.</p>
+                    <button class="mdc-button mt-2" onclick="navigateTo('blog')">Back to Blog</button>
+                </div>
+            `;
+        }
+    }
+
+    function renderSinglePost(post) {
+        const container = document.getElementById('singlePostContent');
+        const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+        const date = new Date(post.date).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        const author = post._embedded?.author?.[0]?.name || 'Admin';
+        const currentUrl = window.location.origin + window.location.pathname + `?post=${post.id}`;
+        const postTitle = post.title.rendered;
+        const postExcerpt = post.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150) + '...';
+        
+        container.innerHTML = `
+            <div class="mdc-card">
+                <button class="mdc-button text mb-3" onclick="navigateTo('blog')">
+                    <i class="material-icons">arrow_back</i>
+                    Back to Blog
+                </button>
+                
+                ${image ? `<img src="${image}" alt="${postTitle}" style="width: 100%; height: 300px; object-fit: cover; border-radius: var(--mdc-border-radius); margin-bottom: var(--mdc-spacing-lg);" loading="lazy">` : 
+                  `<div style="height: 300px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem; margin-bottom: var(--mdc-spacing-lg);">${postTitle.charAt(0)}</div>`}
+                
+                <div class="card-content">
+                    <div class="podcast-meta">
+                        <span><i class="material-icons">calendar_today</i> ${date}</span>
+                        <span><i class="material-icons">person</i> ${author}</span>
+                    </div>
+                    
+                    <h1>${postTitle}</h1>
+                    <div class="post-content">${post.content.rendered}</div>
+                    
+                    <!-- Share Buttons -->
+                    <div class="mt-4">
+                        <h3>Share this post</h3>
+                        <div class="share-buttons">
+                            <button class="share-btn share-facebook" onclick="sharePost('facebook', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
+                                <i class="material-icons">facebook</i>
+                                Facebook
+                            </button>
+                            <button class="share-btn share-twitter" onclick="sharePost('twitter', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
+                                <i class="material-icons">X</i>
+                                Twitter
+                            </button>
+                            <button class="share-btn share-whatsapp" onclick="sharePost('whatsapp', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
+                                <i class="material-icons">whatshot</i>
+                                WhatsApp
+                            </button>
+                            <button class="share-btn share-telegram" onclick="sharePost('telegram', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
+                                <i class="material-icons">telegram</i>
+                                Telegram
+                            </button>
+                            <button class="share-btn share-linkedin" onclick="sharePost('linkedin', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
+                                <i class="material-icons">link</i>
+                                LinkedIn
+                            </button>
+                            <button class="share-btn share-email" onclick="sharePost('email', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')">
+                                <i class="material-icons">email</i>
+                                Email
+                            </button>
+                            <button class="share-btn share-copy" onclick="copyToClipboard('${currentUrl}')">
+                                <i class="material-icons">content_copy</i>
+                                Copy Link
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Share Post Function
+    function sharePost(platform, url, title, excerpt) {
+        const decodedUrl = decodeURIComponent(url);
+        const decodedTitle = decodeURIComponent(title);
+        const decodedExcerpt = decodeURIComponent(excerpt);
+        
+        let shareUrl = '';
+        
+        switch(platform) {
+            case 'facebook':
+                shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${title}`;
+                break;
+            case 'twitter':
+                shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}&hashtags=KLSR,Gospel`;
+                break;
+            case 'whatsapp':
+                shareUrl = `https://wa.me/?text=${title}%20${url}`;
+                break;
+            case 'telegram':
+                shareUrl = `https://t.me/share/url?url=${url}&text=${title}`;
+                break;
+            case 'linkedin':
+                shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+                break;
+            case 'email':
+                shareUrl = `mailto:?subject=${title}&body=${decodedExcerpt}%0A%0ARead more: ${decodedUrl}`;
+                break;
+            default:
+                return;
+        }
+        
+        if (platform === 'email') {
+            window.location.href = shareUrl;
+        } else {
+            window.open(shareUrl, '_blank', 'noopener,noreferrer');
+        }
+    }
+
+    function searchBlogPosts() {
+        const searchTerm = document.getElementById('blogSearch').value.toLowerCase();
+        if (!searchTerm) {
+            appState.filteredBlogPosts = appState.allBlogPosts;
+        } else {
+            appState.filteredBlogPosts = appState.allBlogPosts.filter(post => 
+                post.title.rendered.toLowerCase().includes(searchTerm) ||
+                post.excerpt.rendered.toLowerCase().includes(searchTerm)
+            );
+        }
+        displayFilteredBlogPosts();
+    }
+
+    function displayFilteredBlogPosts() {
+        const container = document.getElementById('blogPosts');
+        if (appState.filteredBlogPosts.length === 0) {
+            container.innerHTML = `
+                <div class="alert" style="grid-column: 1 / -1;">
+                    <p>No articles found matching your search. Try different keywords.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = appState.filteredBlogPosts.map(post => {
+            const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+            const excerpt = post.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150) + '...';
+            const date = new Date(post.date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+            const author = post._embedded?.author?.[0]?.name || 'Admin';
+            
+            return `
+                <div class="podcast-item" onclick="loadSinglePost(${post.id})">
+                    ${image ? `<img src="${image}" alt="${post.title.rendered}" loading="lazy">` : 
+                      `<div style="height: 200px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; margin-bottom: var(--mdc-spacing-md);">${post.title.rendered.charAt(0)}</div>`}
+                    <div class="podcast-meta">
+                        <span><i class="material-icons">calendar_today</i> ${date}</span>
+                        <span><i class="material-icons">person</i> ${author}</span>
+                    </div>
+                    <h3>${post.title.rendered}</h3>
+                    <p>${excerpt}</p>
+                    <button class="mdc-button text">Read More</button>
+                </div>
+            `;
+        }).join('');
+        
+        // Hide pagination for search results
+        document.getElementById('blogPagination').innerHTML = '';
+    }
+
+    // PODCAST FUNCTIONS with PAGINATION FIXED
+    async function loadPodcasts(page = 1) {
+        elements.podcastLoading.style.display = 'flex';
+        elements.podcastList.style.display = 'none';
+        elements.podcastPagination.style.display = 'none';
+        elements.currentPodcastPlayer.style.display = 'none';
+        
+        try {
+            // Use your RSS feed URL
+            const rssUrl = "https://anchor.fm/s/1d6ad87c/podcast/rss";
+            
+            // Check cache first
+            const cacheKey = `podcasts_all`;
+            const cachedData = localStorage.getItem(cacheKey);
+            const now = Date.now();
+            
+            let allEpisodes = [];
+            let podcastInfo = {};
+            
+            if (cachedData) {
+                const { data, info, timestamp } = JSON.parse(cachedData);
+                // Use cache if less than 1 hour old
+                if (now - timestamp < 60 * 60 * 1000) {
+                    allEpisodes = data;
+                    podcastInfo = info;
+                }
+            }
+            
+            if (allEpisodes.length === 0) {
+                // Fetch RSS XML with timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+                
+                const response = await fetch(rssUrl, { signal: controller.signal })
+                    .finally(() => clearTimeout(timeoutId));
+                
+                if (!response.ok) throw new Error('Failed to load RSS feed');
+                
+                const rssText = await response.text();
+                
+                // Parse RSS XML
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(rssText, "text/xml");
+                
+                // Get podcast info
+                const channel = xmlDoc.querySelector('channel');
+                const podcastTitle = channel.querySelector('title')?.textContent || 'Kingdom Lifestyle Podcast';
+                const podcastDescription = channel.querySelector('description')?.textContent || 'Welcome to Kingdom Lifestyle Podcast.';
+                
+                podcastInfo = {
+                    title: podcastTitle,
+                    description: podcastDescription
+                };
+                
+                // Get all items
+                const items = xmlDoc.querySelectorAll('item');
+                
+                // Process podcast episodes
+                allEpisodes = Array.from(items).map((item, index) => {
+                    // Extract data from RSS item
+                    const title = item.querySelector('title')?.textContent || `Episode ${index + 1}`;
+                    const description = item.querySelector('description')?.textContent || '';
+                    const pubDate = item.querySelector('pubDate')?.textContent || new Date().toISOString();
+                    const itunesImage = item.querySelector('itunes\\:image, image')?.getAttribute('href');
+                    const enclosure = item.querySelector('enclosure');
+                    const audioUrl = enclosure?.getAttribute('url') || '';
+                    const duration = item.querySelector('itunes\\:duration')?.textContent || '';
+                    
+                    // Clean description
+                    const cleanDescription = description.replace(/<[^>]+>/g, '').substring(0, 200) + '...';
+                    
+                    // Use podcast image or fallback
+                    const imageUrl = itunesImage || 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80';
+                    
+                    return {
+                        id: index + 1,
+                        title: title,
+                        description: cleanDescription,
+                        fullDescription: description,
+                        pubDate: pubDate,
+                        audio: audioUrl,
+                        duration: duration,
+                        image: imageUrl,
+                        author: item.querySelector('author')?.textContent || 'Kingdom Lifestyle Radio'
+                    };
+                }).filter(episode => episode.audio); // Only include episodes with audio
+                
+                // Cache the data
+                localStorage.setItem(cacheKey, JSON.stringify({
+                    data: allEpisodes,
+                    info: podcastInfo,
+                    timestamp: now
+                }));
+            }
+            
+            // Update app state
+            appState.podcastData.episodes = allEpisodes;
+            appState.podcastData.totalEpisodes = allEpisodes.length;
+            appState.podcastData.totalPages = Math.ceil(allEpisodes.length / appState.podcastPerPage);
+            appState.podcastData.currentPage = page;
+            appState.podcastData.podcastInfo = podcastInfo;
+            
+            renderPodcasts(allEpisodes, page, Math.ceil(allEpisodes.length / appState.podcastPerPage), allEpisodes.length);
+            
+        } catch (error) {
+            console.error('Error loading podcasts:', error);
+            
+            // Fallback to demo data
+            const demoEpisodes = [
+                {
+                    id: 1,
+                    title: "Morning Devotion - Start Your Day Right",
+                    description: "Begin your day with spiritual nourishment and biblical insights for a productive and blessed day.",
+                    fullDescription: "Begin your day with spiritual nourishment and biblical insights for a productive and blessed day. This episode will guide you through morning prayers and scripture readings.",
+                    pubDate: new Date().toISOString(),
+                    audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+                    duration: "15:30",
+                    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+                    author: "Pastor Olalekan"
+                },
+                {
+                    id: 2,
+                    title: "Faith in Action - Practical Christianity",
+                    description: "Learn how to apply biblical principles in your daily life with practical examples and real-life applications.",
+                    fullDescription: "Learn how to apply biblical principles in your daily life with practical examples and real-life applications. Discover how faith can transform your everyday decisions and relationships.",
+                    pubDate: new Date(Date.now() - 86400000).toISOString(),
+                    audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+                    duration: "22:15",
+                    image: "https://images.unsplash.com/photo-1544717305-99670f9c28f3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+                    author: "Kingdom Team"
+                },
+                {
+                    id: 3,
+                    title: "Prayer Warriors - Intercessory Insights",
+                    description: "Deepen your prayer life with powerful teaching on intercession, spiritual warfare, and effective prayer strategies.",
+                    fullDescription: "Deepen your prayer life with powerful teaching on intercession, spiritual warfare, and effective prayer strategies. Learn how to pray effectively for yourself, your family, and your community.",
+                    pubDate: new Date(Date.now() - 172800000).toISOString(),
+                    audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+                    duration: "18:45",
+                    image: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+                    author: "Prayer Ministry"
+                }
+            ];
+            
+            appState.podcastData.episodes = demoEpisodes;
+            appState.podcastData.totalEpisodes = demoEpisodes.length;
+            appState.podcastData.totalPages = 1;
+            appState.podcastData.currentPage = 1;
+            
+            // Update podcast stats
+            if (elements.podcastStats && elements.podcastCount) {
+                elements.podcastStats.style.display = 'block';
+                elements.podcastCount.textContent = demoEpisodes.length;
+            }
+            
+            renderPodcasts(demoEpisodes, 1, 1, demoEpisodes.length);
+            
+             
+        }
+    }
+
+    function renderPodcasts(allEpisodes, currentPage, totalPages, totalEpisodes) {
+        // Update podcast stats
+        if (elements.podcastStats && elements.podcastCount) {
+            elements.podcastStats.style.display = 'block';
+            elements.podcastCount.textContent = totalEpisodes;
+        }
+        
+        // Calculate pagination
+        const start = (currentPage - 1) * appState.podcastPerPage;
+        const end = start + appState.podcastPerPage;
+        const pageEpisodes = allEpisodes.slice(start, end);
+        
+        // Display podcast list
+        if (pageEpisodes.length === 0) {
+            elements.podcastList.innerHTML = `
+                <div class="alert" style="width: 100%;">
+                    <p>No podcast episodes available at the moment. Please check back later.</p>
+                </div>
+            `;
+        } else {
+            elements.podcastList.innerHTML = pageEpisodes.map(podcast => {
+                const date = new Date(podcast.pubDate).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                });
+                
+                return `
+                    <div class="podcast-item" onclick="playPodcast(${podcast.id})">
+                        <img src="${podcast.image}" alt="${podcast.title}" loading="lazy" style="height:100%; width:100%;" onerror="this.src='https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80'">
+                        <div class="podcast-meta">
+                            <span><i class="material-icons">calendar_today</i> ${date}</span>
+                            ${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}
+                        </div>
+                        <h3>${podcast.title}</h3>
+                        <p style="  word-break: break-all;
+      word-wrap: break-word;
+      max-width: 18em; font-size:14px;
+     ">${podcast.description}</p>
+                        <div class="card-actions">
+                            <button class="mdc-button">
+                                <i class="material-icons">play_arrow</i>
+                                Play Episode
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Show elements
+        elements.podcastLoading.style.display = 'none';
+        elements.podcastList.style.display = 'block';
+        
+        // Render pagination if needed
+        if (totalPages > 1) {
+            elements.podcastPagination.style.display = 'flex';
+            renderPagination('podcastPagination', currentPage, totalPages, (p) => {
+                loadPodcasts(p);
+            });
+        }
+    }
+
+    // Podcast Pagination Function
+    function renderPodcastPagination(currentPage, totalPages) {
+        const container = document.getElementById('podcastPagination');
+        if (!container || totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        let paginationHtml = '';
+        
+        // Previous button
+        if (currentPage > 1) {
+            paginationHtml += `
+                <button class="page-btn" onclick="loadPodcasts(${currentPage - 1})">
+                    <i class="material-icons">chevron_left</i>
+                </button>
+            `;
+        }
+        
+        // Page numbers
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        
+        if (endPage - startPage + 1 < maxVisible) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `
+                <button class="page-btn ${i === currentPage ? 'active' : ''}" 
+                        onclick="loadPodcasts(${i})">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        // Next button
+        if (currentPage < totalPages) {
+            paginationHtml += `
+                <button class="page-btn" onclick="loadPodcasts(${currentPage + 1})">
+                    <i class="material-icons">chevron_right</i>
+                </button>
+            `;
+        }
+        
+        container.innerHTML = paginationHtml;
+    }
+
+    function playPodcast(podcastId) {
+        const podcast = appState.podcastData.episodes.find(p => p.id === podcastId);
+        if (!podcast || !podcast.audio) {
+             
+        }
+        
+        // Update current podcast
+        appState.currentPodcast = podcast;
+        
+        // Update player display
+        elements.currentPodcastPlayer.style.display = 'block';
+        elements.currentPodcastInfo.innerHTML = `
+            <h4>${podcast.title}</h4>
+            <p>${podcast.fullDescription || podcast.description}</p>
+            <div class="podcast-meta">
+                <span><i class="material-icons">calendar_today</i> ${new Date(podcast.pubDate).toLocaleDateString()}</span>
+                ${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}
+                <span><i class="material-icons">person</i> ${podcast.author}</span>
+            </div>
+        `;
+        
+        // Set audio source and play
+        elements.podcastAudio.src = podcast.audio;
+        elements.podcastAudio.volume = appState.settings.podcastVolume;
+        
+        elements.podcastAudio.play()
+            .then(() => showAlert(`Now playing: ${podcast.title}`))
+            .catch(e => {
+                console.error('Playback error:', e);
+                 
+            });
+    }
+
+    // Generic Pagination Function
+    function renderPagination(containerId, currentPage, totalPages, callback) {
+        const container = document.getElementById(containerId);
+        if (!container || totalPages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        let paginationHtml = '';
+        
+        // Previous button
+        if (currentPage > 1) {
+            paginationHtml += `
+                <button class="page-btn" onclick="(${callback.toString()})(${currentPage - 1})">
+                    <i class="material-icons">chevron_left</i>
+                </button>
+            `;
+        }
+        
+        // Page numbers
+        const maxVisible = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+        
+        if (endPage - startPage + 1 < maxVisible) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            paginationHtml += `
+                <button class="page-btn ${i === currentPage ? 'active' : ''}" 
+                        onclick="(${callback.toString()})(${i})">
+                    ${i}
+                </button>
+            `;
+        }
+        
+        // Next button
+        if (currentPage < totalPages) {
+            paginationHtml += `
+                <button class="page-btn" onclick="(${callback.toString()})(${currentPage + 1})">
+                    <i class="material-icons">chevron_right</i>
+                </button>
+            `;
+        }
+        
+        container.innerHTML = paginationHtml;
+    }
+
+    // Utility Functions
+    function showAlert(message, type = 'success') {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type}`;
+        alertDiv.innerHTML = `
+            <p>${message}</p>
+            <button class="mdc-button text" onclick="this.parentElement.remove()" style="float: right; margin-top: -8px;">
+                <i class="material-icons">close</i>
+            </button>
+        `;
+        
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent.firstChild) {
+            mainContent.insertBefore(alertDiv, mainContent.firstChild);
+        } else {
+            mainContent.appendChild(alertDiv);
+        }
+        
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text)
+            .then(() => showAlert('Copied to clipboard!'))
+            .catch(() => showAlert('Failed to copy', 'error'));
+    }
+
+    // Form Handlers
+    document.getElementById('prayerForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            name: document.getElementById('prayerName').value,
+            email: document.getElementById('prayerEmail').value,
+            phone: document.getElementById('prayerPhone').value,
+            request: document.getElementById('prayerRequest').value,
+            followup: document.getElementById('prayerFollowup').checked
+        };
+        
+        try {
+            await emailjs.send('service_bg462kr', 'template_6pyapsf', {
+                to_email: 'support@kingdomlifestyleradio.com',
+                from_name: formData.name,
+                from_email: formData.email,
+                phone: formData.phone,
+                message: formData.request,
+                followup: formData.followup ? 'Yes' : 'No'
+            });
+            
+            showAlert('Prayer request submitted! Our team will pray for you.');
+            this.reset();
+            
+        } catch (error) {
+            console.error('Email error:', error);
+            showAlert('Thank you for your prayer request. Our team will pray for you.', 'success');
+            this.reset();
+        }
+    });
+
+    document.getElementById('contactForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = {
+            name: document.getElementById('contactName').value,
+            email: document.getElementById('contactEmail').value,
+            subject: document.getElementById('contactSubject').value,
+            message: document.getElementById('contactMessage').value
+        };
+        
+        try {
+            await emailjs.send('service_bg462kr', 'template_6pyapsf', {
+                to_email: 'robinlaura101@gmail.com',
+                from_name: formData.name,
+                from_email: formData.email,
+                subject: formData.subject,
+                message: formData.message
+            });
+            
+            showAlert('Message sent! We\'ll get back to you soon.');
+            this.reset();
+            
+        } catch (error) {
+            console.error('Email error:', error);
+            showAlert('Thank you for your message. We\'ll be in touch soon.', 'success');
+            this.reset();
+        }
+    });
+
+    // Performance Optimizations - CACHES FEATURES
+    function setupPerformanceOptimizations() {
+        // Service Worker for caching (if supported)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(console.error);
+        }
+        
+        // Preload critical images
+        const criticalImages = [
+            'images/logo.png',
+            'images/herr1.webp',
+            'images/herr2.webp',
+            'images/herr3.webp',
+            'images/herr4.webp'
+        ];
+        
+        criticalImages.forEach(src => {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'image';
+            link.href = src;
+            document.head.appendChild(link);
+        });
+        
+        // Lazy load images
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        img.src = img.dataset.src;
+                        img.classList.remove('lazy');
+                        imageObserver.unobserve(img);
+                    }
+                });
+            });
+            
+            document.querySelectorAll('img[data-src]').forEach(img => {
+                imageObserver.observe(img);
+            });
+        }
+    }
+
+    // Event Listeners
+    function setupEventListeners() {
+        // Initialize radio
+        initRadio();
+        
+        // Load settings
+        loadSettings();
+        
+        // Navigation events
+        elements.bottomNavItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const page = this.dataset.page;
+                if (page === 'more') {
+                    toggleMoreModal();
+                } else {
+                    navigateTo(page);
+                }
+            });
+        });
+        
+        // Settings button in header
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            navigateTo('settings');
+        });
+        
+        // Search button
+        document.getElementById('searchBtn').addEventListener('click', () => {
+            navigateTo('blog');
+            setTimeout(() => {
+                document.getElementById('blogSearch').focus();
+            }, 300);
+        });
+        
+        // Volume controls
+        elements.radioVolume.addEventListener('input', function() {
+            appState.settings.radioVolume = parseFloat(this.value);
+            elements.radioAudio.volume = appState.settings.radioVolume;
+        });
+        
+        elements.podcastVolume.addEventListener('input', function() {
+            appState.settings.podcastVolume = parseFloat(this.value);
+            elements.podcastAudio.volume = appState.settings.podcastVolume;
+        });
+        
+        // Handle URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const page = urlParams.get('page') || 'home';
+        const postId = urlParams.get('post');
+        
+        if (postId) {
+            loadSinglePost(postId);
+        } else {
+            navigateTo(page);
+        }
+        
+        // Handle back/forward navigation
+        window.addEventListener('popstate', function(event) {
+            if (event.state && event.state.page) {
+                navigateTo(event.state.page);
+            }
+        });
+        
+        // Setup performance optimizations
+        setupPerformanceOptimizations();
+    }
+
+    // Expose functions to global scope
+    window.navigateTo = navigateTo;
+    window.loadSinglePost = loadSinglePost;
+    window.toggleRadioPlay = toggleRadioPlay;
+    window.copyToClipboard = copyToClipboard;
+    window.sharePost = sharePost;
+    window.playPodcast = playPodcast;
+    window.searchBlogPosts = searchBlogPosts;
+    window.saveSettings = saveSettings;
+    window.resetSettings = resetSettings;
+    window.toggleMoreModal = toggleMoreModal;
+    window.loadHeroSlider = loadHeroSlider;
+    window.loadBlogPosts = loadBlogPosts;
+    window.loadPodcasts = loadPodcasts;
+    window.playRadio = playRadio;
+    window.pauseRadio = pauseRadio;
+    window.stopRadio = stopRadio;
+
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Load blog hero slider when blog page is loaded
+    if (appState.currentPage === 'blog') {
+        loadHeroSlider();
+    }
+}
+
+// Start the loading screen when page loads
+document.addEventListener('DOMContentLoaded', initLoadingScreen);
 </script>
 
 
