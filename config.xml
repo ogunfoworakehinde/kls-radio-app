@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.kingdomlifestyleradio.klsradio" version="13.0.2"
+<widget id="com.kingdomlifestyleradio.klsradio" version="13.0.3"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:cdv="http://cordova.apache.org/ns/1.0">
@@ -35,7 +35,7 @@
         <preference name="android-installLocation" value="auto" />
         <preference name="android-backgroundColor" value="#0a0f2d" />
         <preference name="android-maxSdkVersion" value="35" />
-        <preference name="versionCode" value="1302" />
+        <preference name="versionCode" value="1303" />
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
