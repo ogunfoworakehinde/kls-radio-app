@@ -11,6 +11,7 @@ jobs:
     env:
       KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
     - name: Checkout code
@@ -27,28 +28,35 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
     - name: Install Cordova
       run: |
         npm install -g cordova@12.0.0
         npm install
 
-    - name: Clean and Add Android Platform
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Clean workspace
       run: |
         rm -rf platforms plugins
+
+    - name: Add Android Platform
+      run: |
         cordova platform add android@13.0.0 --save
 
-    - name: Install Required Plugins
+    - name: Install Plugins (Minimal Set)
       run: |
-        cordova plugin add cordova-plugin-background-mode
-        cordova plugin add cordova-plugin-media@5.0.3
-        cordova plugin add cordova-plugin-music-controls2
-        cordova plugin add cordova-plugin-android-permissions
+        # Remove existing plugins to avoid conflicts
+        rm -rf plugins/*
+        
+        # Install plugins one by one
         cordova plugin add cordova-plugin-network-information
         cordova plugin add cordova-plugin-splashscreen
         cordova plugin add cordova-plugin-statusbar
+        cordova plugin add cordova-plugin-media@5.0.3
+        cordova plugin add cordova-plugin-background-mode
+        cordova plugin add cordova-plugin-music-controls2
+        cordova plugin add cordova-plugin-android-permissions
         cordova plugin add cordova-plugin-device
         cordova plugin add cordova-plugin-powermanagement
 
@@ -56,22 +64,18 @@ jobs:
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
 
-    - name: Build Android AAB (Release)
+    - name: Build Android Release AAB
       run: |
         cordova build android --release -- --packageType=bundle --buildConfig build.json
 
-    - name: Build Android APK (Debug)
+    - name: Build Android Debug APK
       run: |
         cordova build android --debug
 
-    - name: Upload AAB
+    - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: kls-radio-release-aab
-        path: platforms/android/app/build/outputs/bundle/release/*.aab
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: kls-radio-debug-apk
-        path: platforms/android/app/build/outputs/apk/debug/*.apk
+        name: android-builds
+        path: |
+          platforms/android/app/build/outputs/bundle/release/*.aab
+          platforms/android/app/build/outputs/apk/debug/*.apk
