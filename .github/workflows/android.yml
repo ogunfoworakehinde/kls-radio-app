@@ -67,26 +67,6 @@ jobs:
       run: |
         keytool -list -v -keystore klsradio-release.keystore -storepass "www.klsr.com"
         
-    - name: Create or update build.json
-      run: |
-        # Create build.json with the generated keystore
-        cat > build.json << 'EOF'
-{
-  "android": {
-    "release": {
-      "keystore": "klsradio-release.keystore",
-      "storePassword": "www.klsr.com",
-      "alias": "klsradio_release",
-      "password": "www.klsr.com",
-      "keystoreType": "JKS"
-    }
-  }
-}
-EOF
-        
-        echo "build.json created:"
-        cat build.json
-        
     - name: Build Android Debug APK
       run: |
         cordova build android
@@ -110,4 +90,3 @@ EOF
     - name: Clean up generated keystore
       run: |
         rm -f klsradio-release.keystore
-        rm -f build.json
