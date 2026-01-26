@@ -15,19 +15,18 @@
     "cordova-android": "^13.0.0",
     "cordova-plugin-background-mode": "^0.7.3",
     "cordova-plugin-device": "^3.0.0",
-    "cordova-plugin-file": "^6.0.2", /* CHANGED from 7.0.0 to 6.0.2 */
+    "cordova-plugin-file": "^6.0.2",
     "cordova-plugin-media": "^5.0.3",
     "cordova-plugin-network-information": "^3.0.0",
     "cordova-plugin-powermanagement": "^1.0.5",
-    "cordova-plugin-splashscreen": "^6.0.2", /* CHANGED from 6.0.1 to 6.0.2 */
-    "cordova-plugin-statusbar": "^3.0.0" /* CHANGED from 4.0.0 to 3.0.0 */
+    "cordova-plugin-splashscreen": "^6.0.2", 
+    "cordova-plugin-statusbar": "^3.0.0"
   },
   "cordova": {
     "platforms": [
       "android"
     ],
     "plugins": {
-      /* REMOVED cordova-plugin-whitelist (not needed for Cordova 10+) */
       "cordova-plugin-file": {},
       "cordova-plugin-network-information": {},
       "cordova-plugin-device": {},
