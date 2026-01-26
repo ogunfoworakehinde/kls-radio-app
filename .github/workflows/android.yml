@@ -20,11 +20,11 @@ jobs:
       with:
         node-version: '18'
         
-    - name: Install Java
+    - name: Setup Java
       uses: actions/setup-java@v3
       with:
-        distribution: 'zulu'
-        java-version: '17'
+        distribution: 'temurin'
+        java-version: '11'
         
     - name: Install Cordova
       run: |
@@ -34,38 +34,37 @@ jobs:
       run: |
         rm -rf platforms
         rm -rf plugins
-        rm -rf node_modules
         
     - name: Install dependencies
       run: |
-        npm install
+        npm ci
+        
+    - name: Restore keystore from GitHub Secrets
+      run: |
+        # Decode the keystore from GitHub Secrets (NOT generating new one)
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
+        
+        # Verify keystore exists
+        if [ -f "klsradio-release.keystore" ]; then
+          echo "✅ Keystore restored from GitHub Secrets"
+          ls -la klsradio-release.keystore
+        else
+          echo "❌ ERROR: Keystore not restored!"
+          exit 1
+        fi
+        
+    - name: Verify keystore fingerprint
+      run: |
+        # Get SHA1 fingerprint to verify it matches Play Store
+        echo "Checking keystore SHA1 fingerprint..."
+        keytool -list -v \
+          -keystore klsradio-release.keystore \
+          -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+          -alias "${{ secrets.KEY_ALIAS }}" 2>/dev/null | grep -A1 "SHA1:" || echo "Failed to get SHA1"
         
     - name: Add Android platform
       run: |
         cordova platform add android@13.0.0
-        
-    - name: Generate keystore in GitHub Actions
-      run: |
-        # Generate a new keystore with your specified details
-        keytool -genkeypair \
-          -v \
-          -keystore klsradio-release.keystore \
-          -storepass "www.klsr.com" \
-          -alias "klsradio_release" \
-          -keypass "www.klsr.com" \
-          -keyalg RSA \
-          -keysize 2048 \
-          -validity 10000 \
-          -dname "CN=KLS Radio, OU=Kingdom Lifestyle Radio, O=KLS Radio, L=Lagos, ST=Lagos, C=NG" \
-          -storetype JKS
-        
-        # Verify the keystore was created
-        echo "Keystore generated successfully!"
-        ls -la klsradio-release.keystore
-        
-    - name: Verify keystore content
-      run: |
-        keytool -list -v -keystore klsradio-release.keystore -storepass "www.klsr.com"
         
     - name: Build Android Debug APK
       run: |
@@ -73,7 +72,29 @@ jobs:
         
     - name: Build Android Release AAB
       run: |
-        cordova build android --release -- --packageType=bundle
+        # Build with the keystore from secrets
+        cordova build android --release -- \
+          --keystore=klsradio-release.keystore \
+          --storePassword="${{ secrets.KEYSTORE_PASSWORD }}" \
+          --alias="${{ secrets.KEY_ALIAS }}" \
+          --password="${{ secrets.KEY_PASSWORD }}" \
+          --packageType=bundle
+        
+    - name: Get AAB SHA1 fingerprint
+      run: |
+        # Check the generated AAB's SHA1 to verify it's correct
+        AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" | head -1)
+        if [ -f "$AAB_FILE" ]; then
+          echo "📱 Generated AAB file: $AAB_FILE"
+          echo "🔐 SHA1 Fingerprint of generated AAB:"
+          keytool -printcert -jarfile "$AAB_FILE"
+          
+          # Also save SHA1 for reference
+          keytool -printcert -jarfile "$AAB_FILE" | grep "SHA1:" | cut -d' ' -f3 > sha1_fingerprint.txt
+          echo "SHA1 saved to sha1_fingerprint.txt"
+        else
+          echo "❌ No AAB file found!"
+        fi
         
     - name: Upload Debug APK Artifact
       uses: actions/upload-artifact@v4
@@ -87,6 +108,13 @@ jobs:
         name: android-release-aab
         path: platforms/android/app/build/outputs/bundle/release/*.aab
         
-    - name: Clean up generated keystore
+    - name: Upload SHA1 fingerprint
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-info
+        path: sha1_fingerprint.txt
+        
+    - name: Clean up (optional)
       run: |
         rm -f klsradio-release.keystore
+        rm -f sha1_fingerprint.txt
