@@ -7,10 +7,13 @@
   "author": "Kingdom Lifestyle Radio",
   "license": "Apache-2.0",
   "devDependencies": {
-    "cordova-android": "^13.0.0",
+    "cordova-android": "^13.0.0"
+  },
+  "dependencies": {
     "cordova-plugin-android-permissions": "^1.1.5",
     "cordova-plugin-background-mode": "^0.7.3",
     "cordova-plugin-device": "^3.0.0",
+    "cordova-plugin-media": "^5.0.3",
     "cordova-plugin-music-controls2": "^3.0.7",
     "cordova-plugin-network-information": "^3.0.0",
     "cordova-plugin-powermanagement": "^1.0.5",
@@ -25,13 +28,15 @@
       "cordova-plugin-network-information": {},
       "cordova-plugin-splashscreen": {},
       "cordova-plugin-statusbar": {},
+      "cordova-plugin-media": {},
       "cordova-plugin-background-mode": {},
       "cordova-plugin-powermanagement": {},
       "cordova-plugin-android-permissions": {},
       "cordova-plugin-music-controls2": {
         "ANDROID_SUPPORT_VERSION": "27.+",
         "ANDROIDX": "true"
-      }
+      },
+      "cordova-plugin-device": {}
     }
   }
 }
