@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.kingdomlifestyleradio.klsradio" version="12.0.8"
+<widget id="com.kingdomlifestyleradio.klsradio" version="12.0.9"
     xmlns="http://www.w3.org/ns/widgets"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:cdv="http://cordova.apache.org/ns/1.0">
@@ -35,7 +35,7 @@
         <preference name="android-installLocation" value="auto" />
         <preference name="android-backgroundColor" value="#0a0f2d" />
         <preference name="android-maxSdkVersion" value="35" />
-        <preference name="versionCode" value="1208" />
+        <preference name="versionCode" value="1209" />
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
@@ -46,15 +46,13 @@
         <icon density="xxhdpi" src="www/images/icon.png" />
         <icon density="xxxhdpi" src="www/images/icon.png" />
 
-        <!-- Permissions -->
+        <!-- MINIMAL PERMISSIONS - ONLY WHAT'S NECESSARY -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
             <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
             <uses-permission android:name="android.permission.WAKE_LOCK" />
-            <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-            <uses-permission android:name="android.permission.BLUETOOTH" />
-            <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+            
         </edit-config>
 
         <!-- Application configuration -->
@@ -88,17 +86,15 @@
         </edit-config>
     </platform>
 
-    <!-- Essential plugins -->
+    <!-- Essential plugins - REMOVED PROBLEMATIC ONES -->
     <plugin name="cordova-plugin-whitelist" spec="^1.3.5" />
     <plugin name="cordova-plugin-file" spec="^7.0.0" />
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     <plugin name="cordova-plugin-device" spec="^3.0.0" />
     <plugin name="cordova-plugin-splashscreen" spec="^6.0.1" />
     <plugin name="cordova-plugin-statusbar" spec="^4.0.0" />
-    <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
     <plugin name="cordova-plugin-powermanagement" spec="^1.0.5" />
     <plugin name="cordova-plugin-media" spec="^5.0.3" />
-    <plugin name="cordova-plugin-music-controls2" spec="^3.0.7" />
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
 
 </widget>
