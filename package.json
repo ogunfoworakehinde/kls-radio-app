@@ -37,10 +37,7 @@
       "cordova-plugin-media": {},
       "cordova-plugin-background-mode": {},
       "cordova-plugin-powermanagement": {}
-      /* REMOVED:
-      "cordova-plugin-android-permissions": {},
-      "cordova-plugin-music-controls2": {}
-      */
+      
     }
   }
 }
