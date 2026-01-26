@@ -33,25 +33,41 @@ jobs:
         npm install -g cordova@12.0.0
         npm install
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-      with:
-        build-tools-version: '34.0.0'  # Changed from 35.0.3 to 34.0.0
-        platform-version: '35'
-        ndk-version: '25.2.9519653'
-        cmdline-tools-version: '9.0'
-
-    - name: Accept Android Licenses
+    - name: Setup Android SDK (Manual)
       run: |
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
+        # Install required packages
+        sudo apt-get update
+        sudo apt-get install -y unzip wget lib32z1 lib32stdc++6 lib32ncurses6 lib32gcc-s1
+        
+        # Download and setup command line tools
+        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+        unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
+        mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools $ANDROID_SDK_ROOT/cmdline-tools/latest
+        rm cmdline-tools.zip
+        
+        # Add Android SDK to PATH
+        echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+        echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+        
+        # Accept licenses
+        yes | sdkmanager --licenses || true
+        
+        # Install required Android SDK components
+        sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0"
+        
+        # Verify installation
+        sdkmanager --list
 
-    - name: Add Android Platform
+    - name: Clean and Prepare Project
       run: |
-        # Clean any existing platforms/plugins
+        # Remove existing platforms and plugins to avoid conflicts
         rm -rf platforms plugins
+        
+        # Add Android platform
         cordova platform add android@13.0.0 --save
 
-    - name: Add Required Plugins
+    - name: Install Required Plugins
       run: |
         cordova plugin add cordova-plugin-background-mode
         cordova plugin add cordova-plugin-media@5.0.3
