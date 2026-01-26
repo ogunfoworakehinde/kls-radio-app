@@ -10,37 +10,33 @@
         Kingdom Lifestyle Radio
     </author>
 
-    <!-- Entry point -->
     <content src="index.html" />
-
-    <!-- Access -->
     <access origin="*" />
     <allow-navigation href="*" />
-
-    <!-- Splash & Status Bar -->
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    
     <preference name="SplashScreen" value="screen" />
     <preference name="SplashScreenDelay" value="3000" />
     <preference name="SplashMaintainAspectRatio" value="true" />
     <preference name="BackgroundColor" value="#0a0f2d" />
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="StatusBarBackgroundColor" value="#0a0f2d" />
-
-    <!-- Background Audio -->
     <preference name="KeepRunning" value="true" />
     <preference name="AndroidPersistentFileLocation" value="Compatibility" />
     <preference name="loadUrlTimeoutValue" value="700000" />
+    <preference name="cordova_default_package" value="com.kingdomlifestyleradio.klsradio" />
 
     <!-- Android platform specific -->
     <platform name="android">
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="35" />
-        <preference name="android-compileSdkVersion" value="35" />
-        <preference name="GradleVersion" value="8.0" />
-        <preference name="AndroidGradlePluginVersion" value="8.1.0" />
-        <preference name="android-buildToolsVersion" value="34.0.0" /> <!-- CHANGED -->
+        <preference name="android-compileSdkVersion" value="34" /> <!-- Changed from 35 to 34 -->
+        <preference name="android-installLocation" value="auto" />
+        <preference name="android-backgroundColor" value="#0a0f2d" />
+        <preference name="android-maxSdkVersion" value="35" />
         <preference name="versionCode" value="1206" />
 
-        <!-- App icon -->
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
         <icon density="hdpi" src="www/images/icon.png" />
@@ -48,53 +44,28 @@
         <icon density="xxhdpi" src="www/images/icon.png" />
         <icon density="xxxhdpi" src="www/images/icon.png" />
 
-        <!-- Permissions -->
+        <!-- Permissions - SIMPLIFIED VERSION -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
             <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
             <uses-permission android:name="android.permission.WAKE_LOCK" />
-            <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
             <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
             <uses-permission android:name="android.permission.BLUETOOTH" />
             <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-            <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
         </edit-config>
 
-        <!-- Application attributes for background streaming -->
+        <!-- Application configuration - SIMPLIFIED -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application
                 android:allowBackup="false"
-                android:stopWithTask="false"
-                android:foregroundServiceType="mediaPlayback"
                 android:theme="@style/Theme.AppCompat.NoActionBar"
                 android:usesCleartextTraffic="true"
-                android:hardwareAccelerated="true"
-                android:supportsPictureInPicture="true" />
+                android:hardwareAccelerated="true" />
         </edit-config>
 
-        <!-- Background service definition -->
-        <config-file parent="/manifest/application" target="AndroidManifest.xml">
-            <service
-                android:name="de.appplant.cordova.plugin.background.ForegroundService"
-                android:foregroundServiceType="mediaPlayback"
-                android:exported="false" />
-            
-            <receiver android:name="de.appplant.cordova.plugin.background.BackgroundModeBroadcastReceiver">
-                <intent-filter>
-                    <action android:name="android.intent.action.BOOT_COMPLETED" />
-                </intent-filter>
-            </receiver>
-            
-            <meta-data android:name="android.max_aspect" android:value="2.1" />
-        </config-file>
+        <!-- Do NOT add service config here - let plugins handle it -->
 
-        <!-- Music Controls2 configuration -->
-        <config-file parent="/manifest/application" target="AndroidManifest.xml">
-            <receiver android:name="com.rastapasta.musiccontrols.MusicControlsNotificationReceiver" />
-            <receiver android:name="com.rastapasta.musiccontrols.MusicControlsMediaSessionReceiver" />
-        </config-file>
     </platform>
 
     <!-- iOS configuration if needed -->
@@ -108,13 +79,10 @@
         </config-file>
     </platform>
 
-    <!-- Essential plugins -->
+    <!-- Essential plugins with specific versions -->
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
     <plugin name="cordova-plugin-media" spec="^5.0.3" />
-    <plugin name="cordova-plugin-music-controls2" spec="^3.0.7">
-        <variable name="ANDROID_SUPPORT_VERSION" value="27.+" />
-        <variable name="ANDROIDX" value="true" />
-    </plugin>
+    <plugin name="cordova-plugin-music-controls2" spec="^3.0.7" />
     <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     <plugin name="cordova-plugin-splashscreen" spec="^6.0.1" />
