@@ -1,148 +1,179 @@
-// www/js/index.js - Updated Main Integration
+// www/js/index.js - Main App Integration
 
 document.addEventListener('deviceready', onDeviceReady, false);
 
 function onDeviceReady() {
-    console.log('Cordova is ready!');
-    console.log('Platform:', device.platform);
-    console.log('Version:', device.version);
-    console.log('Model:', device.model);
+    console.log('Device ready! Starting KLS Radio...');
     
-    // Initialize radio state
-    initRadioState();
+    // Initialize app state
+    initAppState();
     
-    // Request notification permission for Android 13+
-    requestNotificationPermission();
+    // Setup UI
+    setupUI();
     
-    // Initialize radio if not already initialized
-    setTimeout(() => {
-        if (window.appState && !window.appState.radioInitialized) {
-            initRadio();
-            window.appState.radioInitialized = true;
-        }
-    }, 1000);
-    
-    // Add click handlers for buttons
-    setupButtonHandlers();
+    // Check if cordovaAudio is available
+    if (window.cordovaAudio) {
+        console.log('Cordova audio service available');
+    } else {
+        console.error('Cordova audio service not available');
+    }
 }
 
-function initRadioState() {
-    // Initialize app state if not exists
+function initAppState() {
+    // Initialize or restore app state
     window.appState = window.appState || {};
-    window.appState.stations = window.appState.stations || [
+    
+    // Stations configuration
+    window.appState.stations = [
         {
             id: 0,
             name: "English Gospel",
             url: "https://s3.voscast.com:9425/stream",
             description: "24/7 English Gospel Music",
-            type: "mp3"
+            type: "mp3",
+            color: "#0a0f2d"
         },
         {
             id: 1,
             name: "Yoruba Gospel",
             url: "https://s3.voscast.com:10745/stream",
             description: "Yoruba Language Worship",
-            type: "mp3"
+            type: "mp3",
+            color: "#1a3d7c"
         },
         {
             id: 2,
             name: "Praise Worship",
             url: "https://stream.zeno.fm/f3wvbbqmdg8uv",
             description: "Contemporary Praise",
-            type: "mp3"
+            type: "mp3",
+            color: "#2a5c9c"
         }
     ];
-    window.appState.currentStation = window.appState.currentStation || 0;
-    window.appState.radioInitialized = window.appState.radioInitialized || false;
-    window.appState.radioPlaying = window.appState.radioPlaying || false;
     
-    // Update display with current station
+    // Current state
+    window.appState.currentStation = window.appState.currentStation || 0;
+    window.appState.isPlaying = false;
+    window.appState.volume = 1.0;
+    
+    console.log('App state initialized with', window.appState.stations.length, 'stations');
+}
+
+function setupUI() {
+    // Create station buttons
+    createStationButtons();
+    
+    // Update display
     updateRadioDisplay();
+    
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Add CSS for active station
+    addActiveStationCSS();
 }
 
-function requestNotificationPermission() {
-    if (typeof cordova !== 'undefined' && cordova.plugins && cordova.plugins.permissions) {
-        // Check Android version
-        if (device.platform === 'Android') {
-            const androidVersion = parseInt(device.version);
-            
-            // Android 13+ requires POST_NOTIFICATIONS permission
-            if (androidVersion >= 13) {
-                cordova.plugins.permissions.checkPermission(
-                    cordova.plugins.permissions.POST_NOTIFICATIONS,
-                    (status) => {
-                        if (!status.hasPermission) {
-                            cordova.plugins.permissions.requestPermission(
-                                cordova.plugins.permissions.POST_NOTIFICATIONS,
-                                () => console.log('Notification permission granted'),
-                                () => console.warn('Notification permission denied')
-                            );
-                        } else {
-                            console.log('Notification permission already granted');
-                        }
-                    },
-                    (error) => console.error('Permission check error:', error)
-                );
-            }
-        }
-    }
+function createStationButtons() {
+    const stationsContainer = document.getElementById('stationsContainer');
+    if (!stationsContainer) return;
+    
+    stationsContainer.innerHTML = '';
+    
+    window.appState.stations.forEach((station, index) => {
+        const button = document.createElement('button');
+        button.className = 'station-btn';
+        button.setAttribute('data-station', station.id);
+        button.innerHTML = `
+            <span class="station-name">${station.name}</span>
+            <span class="station-desc">${station.description}</span>
+        `;
+        
+        button.style.backgroundColor = station.color || '#0a0f2d';
+        
+        button.addEventListener('click', () => selectStation(station.id));
+        
+        stationsContainer.appendChild(button);
+    });
 }
 
-function setupButtonHandlers() {
+function setupEventListeners() {
     // Play/Pause button
-    const playPauseBtn = document.getElementById('playPauseBtn');
-    if (playPauseBtn) {
-        playPauseBtn.addEventListener('click', toggleRadioPlay);
-        playPauseBtn.addEventListener('touchstart', (e) => {
+    const playBtn = document.getElementById('playPauseBtn');
+    if (playBtn) {
+        playBtn.addEventListener('click', togglePlayPause);
+        playBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            toggleRadioPlay();
+            togglePlayPause();
         });
     }
     
     // Next button
     const nextBtn = document.getElementById('nextBtn');
     if (nextBtn) {
-        nextBtn.addEventListener('click', () => switchRadioStation('next'));
+        nextBtn.addEventListener('click', () => switchStation('next'));
         nextBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            switchRadioStation('next');
+            switchStation('next');
         });
     }
     
     // Previous button
     const prevBtn = document.getElementById('prevBtn');
     if (prevBtn) {
-        prevBtn.addEventListener('click', () => switchRadioStation('prev'));
+        prevBtn.addEventListener('click', () => switchStation('prev'));
         prevBtn.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            switchRadioStation('prev');
+            switchStation('prev');
         });
     }
     
-    // Station selection buttons
-    const stationButtons = document.querySelectorAll('.station-btn');
-    stationButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const stationId = parseInt(this.getAttribute('data-station'));
-            selectStation(stationId);
+    // Volume control
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (volumeSlider) {
+        volumeSlider.value = window.appState.volume * 100;
+        volumeSlider.addEventListener('input', (e) => {
+            const volume = e.target.value / 100;
+            window.appState.volume = volume;
+            if (window.cordovaAudio && window.cordovaAudio.audio) {
+                window.cordovaAudio.audio.volume = volume;
+            }
+            updateVolumeDisplay(volume);
         });
-    });
+    }
 }
 
-function toggleRadioPlay() {
-    console.log('Toggle radio play called');
+function addActiveStationCSS() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .station-btn.active {
+            border: 3px solid #fff;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+        
+        .play-btn.playing {
+            background-color: #dc3545 !important;
+        }
+        
+        .play-btn.playing .play-icon {
+            content: 'pause';
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function togglePlayPause() {
+    console.log('Toggle play/pause');
     
     if (window.cordovaAudio) {
-        console.log('Using cordovaAudio, isPlaying:', window.cordovaAudio.isPlaying);
         if (window.cordovaAudio.isPlaying) {
             window.cordovaAudio.pause();
         } else {
             window.cordovaAudio.play();
         }
     } else {
-        console.log('Using HTML5 fallback');
-        // Fallback to HTML5 audio
-        if (window.appState && window.appState.radioPlaying) {
+        // Fallback for browser testing
+        if (window.appState.isPlaying) {
             pauseRadio();
         } else {
             playRadio();
@@ -151,136 +182,107 @@ function toggleRadioPlay() {
 }
 
 function playRadio() {
-    if (window.appState && window.appState.stations) {
-        const station = window.appState.stations[window.appState.currentStation || 0];
+    const station = window.appState.stations[window.appState.currentStation];
+    if (station) {
+        window.appState.isPlaying = true;
+        updatePlayButton(true);
+        showToast(`Now playing: ${station.name}`);
         
-        if (window.cordovaAudio) {
-            window.cordovaAudio.playStation(station);
-        } else {
-            // HTML5 fallback
+        // In browser, create audio element
+        if (!window.cordovaAudio) {
             const audio = document.getElementById('radioAudio');
-            if (audio) {
+            if (!audio) {
+                const newAudio = new Audio(station.url);
+                newAudio.id = 'radioAudio';
+                newAudio.volume = window.appState.volume;
+                document.body.appendChild(newAudio);
+                newAudio.play();
+            } else {
                 audio.src = station.url;
-                audio.setAttribute('playsinline', 'true');
-                audio.setAttribute('webkit-playsinline', 'true');
-                
-                audio.play()
-                    .then(() => {
-                        window.appState.radioPlaying = true;
-                        updatePlayButton(true);
-                        showToast(`Now playing: ${station.name}`);
-                    })
-                    .catch(error => {
-                        console.error('HTML5 Play failed:', error);
-                        showToast('Failed to play radio. Tap play button again.', 'error');
-                    });
+                audio.play();
             }
         }
     }
 }
 
 function pauseRadio() {
-    if (window.cordovaAudio) {
-        window.cordovaAudio.pause();
-    } else {
+    window.appState.isPlaying = false;
+    updatePlayButton(false);
+    
+    if (!window.cordovaAudio) {
         const audio = document.getElementById('radioAudio');
         if (audio) {
             audio.pause();
-            window.appState.radioPlaying = false;
-            updatePlayButton(false);
         }
     }
 }
 
-function switchRadioStation(direction) {
-    if (window.appState && window.appState.stations) {
-        const currentIndex = window.appState.currentStation || 0;
-        const totalStations = window.appState.stations.length;
-        
-        let newIndex;
-        if (direction === 'next') {
-            newIndex = (currentIndex + 1) % totalStations;
-        } else if (direction === 'prev') {
-            newIndex = (currentIndex - 1 + totalStations) % totalStations;
-        } else {
-            return;
-        }
-        
-        console.log('Switching station from', currentIndex, 'to', newIndex);
-        window.appState.currentStation = newIndex;
-        const station = window.appState.stations[newIndex];
-        
-        // Update UI
-        updateRadioDisplay();
-        
-        // Play the station
+function switchStation(direction) {
+    const stations = window.appState.stations;
+    const currentIndex = window.appState.currentStation;
+    
+    let newIndex;
+    if (direction === 'next') {
+        newIndex = (currentIndex + 1) % stations.length;
+    } else {
+        newIndex = (currentIndex - 1 + stations.length) % stations.length;
+    }
+    
+    window.appState.currentStation = newIndex;
+    updateRadioDisplay();
+    
+    // If currently playing, switch station
+    const wasPlaying = window.cordovaAudio ? window.cordovaAudio.isPlaying : window.appState.isPlaying;
+    if (wasPlaying) {
         if (window.cordovaAudio) {
-            if (window.cordovaAudio.isPlaying) {
-                window.cordovaAudio.playStation(station);
-            }
-        } else if (window.appState.radioPlaying) {
+            window.cordovaAudio.playStation(stations[newIndex]);
+        } else {
             playRadio();
         }
-        
-        // Update active station button
-        updateActiveStationButton(newIndex);
     }
 }
 
 function selectStation(stationId) {
-    if (window.appState && window.appState.stations) {
-        const station = window.appState.stations.find(s => s.id === stationId);
-        if (station) {
-            console.log('Selected station:', station.name);
-            window.appState.currentStation = stationId;
-            
-            // Update UI
-            updateRadioDisplay();
-            updateActiveStationButton(stationId);
-            
-            // Play the station if currently playing
+    const stationIndex = window.appState.stations.findIndex(s => s.id === stationId);
+    if (stationIndex !== -1) {
+        window.appState.currentStation = stationIndex;
+        updateRadioDisplay();
+        
+        // If currently playing, switch to selected station
+        const wasPlaying = window.cordovaAudio ? window.cordovaAudio.isPlaying : window.appState.isPlaying;
+        if (wasPlaying) {
             if (window.cordovaAudio) {
-                if (window.cordovaAudio.isPlaying) {
-                    window.cordovaAudio.playStation(station);
-                }
-            } else if (window.appState.radioPlaying) {
+                window.cordovaAudio.playStation(window.appState.stations[stationIndex]);
+            } else {
                 playRadio();
             }
         }
     }
 }
 
-function updateActiveStationButton(activeId) {
-    // Remove active class from all station buttons
-    const stationButtons = document.querySelectorAll('.station-btn');
-    stationButtons.forEach(btn => {
-        btn.classList.remove('active');
+function updateRadioDisplay() {
+    const station = window.appState.stations[window.appState.currentStation];
+    if (!station) return;
+    
+    // Update station info
+    const stationNameEl = document.getElementById('currentStation');
+    const stationDescEl = document.getElementById('currentChannel');
+    
+    if (stationNameEl) stationNameEl.textContent = station.name;
+    if (stationDescEl) stationDescEl.textContent = station.description;
+    
+    // Update active station button
+    document.querySelectorAll('.station-btn').forEach(btn => {
+        const btnStationId = parseInt(btn.getAttribute('data-station'));
+        if (btnStationId === station.id) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
     });
     
-    // Add active class to selected station button
-    const activeBtn = document.querySelector(`.station-btn[data-station="${activeId}"]`);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
-    }
-}
-
-function updateRadioDisplay() {
-    if (window.appState && window.appState.stations) {
-        const station = window.appState.stations[window.appState.currentStation || 0];
-        const currentStationEl = document.getElementById('currentStation');
-        const currentChannelEl = document.getElementById('currentChannel');
-        
-        if (currentStationEl) {
-            currentStationEl.textContent = station.name;
-        }
-        
-        if (currentChannelEl) {
-            currentChannelEl.textContent = station.description;
-        }
-        
-        // Update active station button
-        updateActiveStationButton(window.appState.currentStation);
-    }
+    // Update background color
+    document.body.style.backgroundColor = station.color || '#0a0f2d';
 }
 
 function updatePlayButton(isPlaying) {
@@ -290,61 +292,58 @@ function updatePlayButton(isPlaying) {
     if (playBtn && playIcon) {
         if (isPlaying) {
             playIcon.textContent = 'pause';
-            playBtn.setAttribute('aria-label', 'Pause radio');
             playBtn.classList.add('playing');
+            playBtn.setAttribute('aria-label', 'Pause radio');
         } else {
             playIcon.textContent = 'play_arrow';
-            playBtn.setAttribute('aria-label', 'Play radio');
             playBtn.classList.remove('playing');
+            playBtn.setAttribute('aria-label', 'Play radio');
         }
+    }
+    
+    window.appState.isPlaying = isPlaying;
+}
+
+function updateVolumeDisplay(volume) {
+    const volumeDisplay = document.getElementById('volumeDisplay');
+    if (volumeDisplay) {
+        volumeDisplay.textContent = `${Math.round(volume * 100)}%`;
     }
 }
 
 function showToast(message, type = 'info') {
-    // Use cordovaAudio's toast if available
     if (window.cordovaAudio && window.cordovaAudio.showToast) {
         window.cordovaAudio.showToast(message, type);
     } else {
-        // Simple fallback toast
+        // Simple toast fallback
         const toast = document.createElement('div');
+        toast.textContent = message;
         toast.style.cssText = `
             position: fixed;
             top: 100px;
             right: 20px;
-            background: ${type === 'error' ? '#dc3545' : type === 'warning' ? '#ffc107' : '#0a0f2d'};
-            color: ${type === 'warning' ? '#000' : 'white'};
+            background: ${type === 'error' ? '#dc3545' : '#0a0f2d'};
+            color: white;
             padding: 12px 24px;
             border-radius: 8px;
             z-index: 9999;
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            animation: slideIn 0.3s ease;
-            max-width: 300px;
         `;
-        toast.textContent = message;
         document.body.appendChild(toast);
         
         setTimeout(() => {
-            toast.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (toast.parentNode) {
-                    document.body.removeChild(toast);
-                }
-            }, 300);
+            if (toast.parentNode) {
+                document.body.removeChild(toast);
+            }
         }, 3000);
     }
 }
 
-function initRadio() {
-    console.log('Initializing radio...');
-    updateRadioDisplay();
-    updatePlayButton(false);
-}
-
-// Expose functions to global scope
-window.toggleRadioPlay = toggleRadioPlay;
-window.switchRadioStation = switchRadioStation;
+// Make functions available globally
+window.togglePlayPause = togglePlayPause;
+window.switchStation = switchStation;
+window.selectStation = selectStation;
 window.updateRadioDisplay = updateRadioDisplay;
+window.updatePlayButton = updatePlayButton;
 window.playRadio = playRadio;
 window.pauseRadio = pauseRadio;
-window.selectStation = selectStation;
-window.updatePlayButton = updatePlayButton;
