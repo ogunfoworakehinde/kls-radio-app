@@ -5,84 +5,76 @@ on:
     branches: [ main ]
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
-    
+
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
-    - name: Setup Java 17
+
+    - name: Setup Java
       uses: actions/setup-java@v4
       with:
+        distribution: temurin
         java-version: '17'
-        distribution: 'temurin'
-        
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-        
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        
-    - name: Install dependencies
+
+    - name: Install Cordova and dependencies
       run: |
-        npm install -g cordova@11.0.0
-        sudo apt-get update
-        sudo apt-get install -y gradle
-        
-    - name: Create Cordova project
+        npm install -g cordova@12.0.0
+        npm install
+
+    - name: Clean and prepare platform
       run: |
-        # Clean up if exists
-        rm -rf build || true
-        
-        # Create new project
-        cordova create build com.kingdomlifestyleradio.app "Kingdom Lifestyle Radio"
-        cd build
-        
-        # Add Android platform
-        cordova platform add android@11.0.0
-        
-        # Copy your app files
-        cp -r ../www/* www/
-        cp ../config.xml .
-        
-        # Install minimal plugins
-        cordova plugin add cordova-plugin-whitelist
-        cordova plugin add cordova-plugin-statusbar
+        rm -rf platforms plugins
+        cordova platform add android@13.0.0 --save
+
+    - name: Install required plugins
+      run: |
+        cordova plugin add cordova-plugin-background-mode
+        cordova plugin add cordova-plugin-media
+        cordova plugin add cordova-plugin-music-controls2@3.0.7
+        cordova plugin add cordova-plugin-android-permissions
+        cordova plugin add cordova-plugin-network-information
         cordova plugin add cordova-plugin-splashscreen
-        cordova plugin add cordova-plugin-insomnia
-        
-    - name: Build Debug APK
+        cordova plugin add cordova-plugin-statusbar
+        cordova plugin add cordova-plugin-device
+        cordova plugin add cordova-plugin-powermanagement
+
+    - name: Install Android SDK
       run: |
-        cd build
-        cordova build android
-        
-    - name: Upload Debug APK
+        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.3"
+
+    - name: Decode keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
+
+    - name: Build Android AAB (Release)
+      run: |
+        cordova build android --release -- --packageType=bundle --buildConfig build.json
+
+    - name: Build Android APK (Debug)
+      run: |
+        cordova build android --debug
+
+    - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: android-debug-apk
-        path: build/platforms/android/app/build/outputs/apk/debug/*.apk
-        
-    - name: Build Release APK
-      run: |
-        cd build
-        cordova build android --release
-        
-    - name: Upload Release APK
+        name: kls-radio-release-aab
+        path: platforms/android/app/build/outputs/bundle/release/*.aab
+
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: android-release-apk
-        path: build/platforms/android/app/build/outputs/apk/release/*.apk
-        
-    - name: Build Release AAB
-      run: |
-        cd build
-        cordova build android --release -- --packageType=bundle
-        
-    - name: Upload Release AAB
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-release-aab
-        path: build/platforms/android/app/build/outputs/bundle/release/*.aab
+        name: kls-radio-debug-apk
+        path: platforms/android/app/build/outputs/apk/debug/*.apk
