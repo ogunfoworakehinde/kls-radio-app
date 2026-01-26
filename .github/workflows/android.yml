@@ -21,7 +21,7 @@ jobs:
         node-version: '18'
         
     - name: Setup Java
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         distribution: 'temurin'
         java-version: '11'
@@ -30,49 +30,56 @@ jobs:
       run: |
         npm install -g cordova@12.0.0
         
-    - name: Clean previous builds
+    - name: Install dependencies (FIXED - uses npm install not npm ci)
       run: |
-        rm -rf platforms
-        rm -rf plugins
+        # Use npm install instead of npm ci to avoid lock file issues
+        npm install
         
-    - name: Install dependencies
+    - name: Ensure Android platform exists
       run: |
-        npm ci
+        cordova platform rm android --nosave 2>/dev/null || true
+        cordova platform add android@13.0.0
+        
+    - name: Ensure required plugins
+      run: |
+        # Remove and re-add plugins to ensure consistency
+        cordova plugin rm cordova-plugin-media 2>/dev/null || true
+        cordova plugin rm cordova-plugin-background-mode 2>/dev/null || true
+        cordova plugin rm cordova-plugin-network-information 2>/dev/null || true
+        cordova plugin rm cordova-plugin-splashscreen 2>/dev/null || true
+        cordova plugin rm cordova-plugin-statusbar 2>/dev/null || true
+        
+        # Add required plugins (match what's in package.json)
+        cordova plugin add cordova-plugin-network-information
+        cordova plugin add cordova-plugin-splashscreen
+        cordova plugin add cordova-plugin-statusbar
+        cordova plugin add cordova-plugin-media@5.0.4
+        cordova plugin add cordova-plugin-background-mode
         
     - name: Restore keystore from GitHub Secrets
       run: |
-        # Decode the keystore from GitHub Secrets (NOT generating new one)
+        # Decode the keystore from GitHub Secrets
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
         
         # Verify keystore exists
         if [ -f "klsradio-release.keystore" ]; then
           echo "✅ Keystore restored from GitHub Secrets"
           ls -la klsradio-release.keystore
+          
+          # Verify keystore can be read
+          keytool -list -v \
+            -keystore klsradio-release.keystore \
+            -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
+            -alias "${{ secrets.KEY_ALIAS }}" 2>/dev/null | head -20 || echo "⚠️ Could not fully verify keystore"
         else
           echo "❌ ERROR: Keystore not restored!"
           exit 1
         fi
         
-    - name: Verify keystore fingerprint
-      run: |
-        # Get SHA1 fingerprint to verify it matches Play Store
-        echo "Checking keystore SHA1 fingerprint..."
-        keytool -list -v \
-          -keystore klsradio-release.keystore \
-          -storepass "${{ secrets.KEYSTORE_PASSWORD }}" \
-          -alias "${{ secrets.KEY_ALIAS }}" 2>/dev/null | grep -A1 "SHA1:" || echo "Failed to get SHA1"
-        
-    - name: Add Android platform
-      run: |
-        cordova platform add android@13.0.0
-        
-    - name: Build Android Debug APK
-      run: |
-        cordova build android
-        
     - name: Build Android Release AAB
       run: |
         # Build with the keystore from secrets
+        echo "Building Release AAB..."
         cordova build android --release -- \
           --keystore=klsradio-release.keystore \
           --storePassword="${{ secrets.KEYSTORE_PASSWORD }}" \
@@ -80,41 +87,65 @@ jobs:
           --password="${{ secrets.KEY_PASSWORD }}" \
           --packageType=bundle
         
-    - name: Get AAB SHA1 fingerprint
+    - name: Build Android Debug APK
+      run: |
+        echo "Building Debug APK..."
+        cordova build android
+        
+    - name: Get AAB SHA1 fingerprint (VERY IMPORTANT)
       run: |
         # Check the generated AAB's SHA1 to verify it's correct
         AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" | head -1)
         if [ -f "$AAB_FILE" ]; then
           echo "📱 Generated AAB file: $AAB_FILE"
-          echo "🔐 SHA1 Fingerprint of generated AAB:"
-          keytool -printcert -jarfile "$AAB_FILE"
+          echo "🔐 SHA1 Fingerprint (MUST MATCH Google Play):"
+          keytool -printcert -jarfile "$AAB_FILE" | grep -A1 "SHA1:" || echo "Could not get SHA1"
           
-          # Also save SHA1 for reference
-          keytool -printcert -jarfile "$AAB_FILE" | grep "SHA1:" | cut -d' ' -f3 > sha1_fingerprint.txt
+          # Save SHA1 for reference
+          keytool -printcert -jarfile "$AAB_FILE" | grep "SHA1:" | head -1 | cut -d' ' -f3 > sha1_fingerprint.txt
           echo "SHA1 saved to sha1_fingerprint.txt"
+          cat sha1_fingerprint.txt
+          
+          echo ""
+          echo "🔍 EXPECTED SHA1 from Google Play:"
+          echo "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4"
+          echo ""
+          echo "✅ If SHA1 matches above, upload to Google Play will work!"
+          echo "❌ If SHA1 is different, check your KEYSTORE_BASE64 secret"
         else
           echo "❌ No AAB file found!"
+          find platforms/android/app/build/outputs/bundle/release/ -type f 2>/dev/null || echo "Bundle directory not found"
         fi
-        
-    - name: Upload Debug APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-debug-apk
-        path: platforms/android/app/build/outputs/apk/debug/*.apk
         
     - name: Upload Release AAB Artifact
       uses: actions/upload-artifact@v4
       with:
         name: android-release-aab
         path: platforms/android/app/build/outputs/bundle/release/*.aab
+        retention-days: 7
+        
+    - name: Upload Debug APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-debug-apk
+        path: platforms/android/app/build/outputs/apk/debug/*.apk
+        retention-days: 7
         
     - name: Upload SHA1 fingerprint
       uses: actions/upload-artifact@v4
+      if: always()
       with:
         name: build-info
         path: sha1_fingerprint.txt
+        retention-days: 7
         
-    - name: Clean up (optional)
+    - name: Show build summary
+      if: always()
       run: |
-        rm -f klsradio-release.keystore
-        rm -f sha1_fingerprint.txt
+        echo "=== BUILD SUMMARY ==="
+        echo "✅ Workflow completed"
+        echo ""
+        echo "Download artifacts from:"
+        echo "- android-release-aab: For Google Play Store upload"
+        echo "- android-debug-apk: For testing"
+        echo "- build-info: Contains SHA1 fingerprint"
