@@ -11,7 +11,7 @@ jobs:
     env:
       KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
       KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
 
     steps:
     - name: Checkout code
@@ -28,32 +28,40 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install Cordova and dependencies
+    - name: Install Cordova
       run: |
         npm install -g cordova@12.0.0
         npm install
 
-    - name: Clean and prepare platform
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        build-tools-version: '34.0.0'  # Changed from 35.0.3 to 34.0.0
+        platform-version: '35'
+        ndk-version: '25.2.9519653'
+        cmdline-tools-version: '9.0'
+
+    - name: Accept Android Licenses
       run: |
+        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+    - name: Add Android Platform
+      run: |
+        # Clean any existing platforms/plugins
         rm -rf platforms plugins
         cordova platform add android@13.0.0 --save
 
-    - name: Install required plugins
+    - name: Add Required Plugins
       run: |
         cordova plugin add cordova-plugin-background-mode
-        cordova plugin add cordova-plugin-media
-        cordova plugin add cordova-plugin-music-controls2@3.0.7
+        cordova plugin add cordova-plugin-media@5.0.3
+        cordova plugin add cordova-plugin-music-controls2
         cordova plugin add cordova-plugin-android-permissions
         cordova plugin add cordova-plugin-network-information
         cordova plugin add cordova-plugin-splashscreen
         cordova plugin add cordova-plugin-statusbar
         cordova plugin add cordova-plugin-device
         cordova plugin add cordova-plugin-powermanagement
-
-    - name: Install Android SDK
-      run: |
-        yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.3"
 
     - name: Decode keystore
       run: |
