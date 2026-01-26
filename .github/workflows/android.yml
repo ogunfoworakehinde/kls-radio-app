@@ -2,80 +2,64 @@ name: Build Android APK and AAB
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    env:
-      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Setup Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: '17'
-
+      
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-
+        
+    - name: Install Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+        
     - name: Install Cordova
       run: |
         npm install -g cordova@12.0.0
-        npm install
-
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: Clean workspace
-      run: |
-        rm -rf platforms plugins
-
-    - name: Add Android Platform
-      run: |
-        cordova platform add android@13.0.0 --save
-
-    - name: Install Plugins (Minimal Set)
-      run: |
-        # Remove existing plugins to avoid conflicts
-        rm -rf plugins/*
         
-        # Install plugins one by one
-        cordova plugin add cordova-plugin-network-information
-        cordova plugin add cordova-plugin-splashscreen
-        cordova plugin add cordova-plugin-statusbar
-        cordova plugin add cordova-plugin-media@5.0.3
-        cordova plugin add cordova-plugin-background-mode
-        cordova plugin add cordova-plugin-music-controls2
-        cordova plugin add cordova-plugin-android-permissions
-        cordova plugin add cordova-plugin-device
-        cordova plugin add cordova-plugin-powermanagement
-
-    - name: Decode keystore
+    - name: Clean previous builds
       run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
-
-    - name: Build Android Release AAB
+        rm -rf platforms
+        rm -rf plugins
+        rm -rf node_modules
+        
+    - name: Install dependencies
       run: |
-        cordova build android --release -- --packageType=bundle --buildConfig build.json
-
+        npm install
+        
+    - name: Add Android platform
+      run: |
+        cordova platform add android@13.0.0
+        
     - name: Build Android Debug APK
       run: |
-        cordova build android --debug
-
-    - name: Upload artifacts
+        cordova build android
+        
+    - name: Build Android Release AAB
+      run: |
+        cordova build android --release -- --packageType=bundle
+        
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: android-builds
-        path: |
-          platforms/android/app/build/outputs/bundle/release/*.aab
-          platforms/android/app/build/outputs/apk/debug/*.apk
+        name: android-apk
+        path: platforms/android/app/build/outputs/apk/debug/*.apk
+        
+    - name: Upload AAB Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-aab
+        path: platforms/android/app/build/outputs/bundle/release/*.aab
