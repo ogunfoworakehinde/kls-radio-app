@@ -1,4 +1,4 @@
-// www/js/cordova-background.js - Simple Cordova Background Audio
+// www/js/cordova-background.js - Complete Working Background Audio Service
 
 class CordovaBackgroundAudio {
     constructor() {
@@ -7,288 +7,47 @@ class CordovaBackgroundAudio {
         this.audio = null;
         this.retryCount = 0;
         this.maxRetries = 3;
+        this.isInitialized = false;
         this.init();
     }
 
     init() {
+        console.log('CordovaBackgroundAudio: Initializing...');
+        
         // Wait for device ready
-        document.addEventListener('deviceready', this.onDeviceReady.bind(this), false);
-        
-        // Handle app lifecycle
-        document.addEventListener('pause', this.onAppPause.bind(this), false);
-        document.addEventListener('resume', this.onAppResume.bind(this), false);
-        
-        // Handle visibility change
-        document.addEventListener('visibilitychange', this.onVisibilityChange.bind(this), false);
+        if (typeof document !== 'undefined') {
+            document.addEventListener('deviceready', this.onDeviceReady.bind(this), false);
+            
+            // Handle app lifecycle
+            document.addEventListener('pause', this.onAppPause.bind(this), false);
+            document.addEventListener('resume', this.onAppResume.bind(this), false);
+            document.addEventListener('backbutton', this.onBackButton.bind(this), false);
+        } else {
+            console.warn('Document not available, running in browser?');
+            // Simulate device ready for browser testing
+            setTimeout(this.onDeviceReady.bind(this), 1000);
+        }
     }
 
     onDeviceReady() {
         console.log('CordovaBackgroundAudio: Device ready');
-        console.log('Platform:', device.platform);
-        console.log('Version:', device.version);
+        console.log('Platform:', device ? device.platform : 'browser');
+        console.log('Version:', device ? device.version : 'N/A');
         
-        // Request all necessary permissions
-        this.requestAllPermissions();
-        
-        // Initialize background mode if plugin exists
-        if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
-            this.initBackgroundMode();
-        } else {
-            console.error('Background Mode plugin not available!');
-        }
-        
-        // Initialize music controls if plugin exists
-        if (typeof MusicControls !== 'undefined') {
-            this.initMusicControls();
-        } else {
-            console.warn('MusicControls plugin not available');
-        }
-        
-        // Initialize stations if available
+        // Initialize stations
         this.initializeStations();
-    }
-
-    async requestAllPermissions() {
-        if (typeof device === 'undefined') {
-            console.log('Device plugin not available');
-            return;
-        }
         
-        // Only for Android
-        if (device.platform === 'Android') {
-            try {
-                if (cordova.plugins && cordova.plugins.permissions) {
-                    console.log('Requesting permissions...');
-                    
-                    // Check Android version
-                    const androidVersion = parseInt(device.version);
-                    
-                    // Always request these permissions
-                    const permissions = [
-                        'android.permission.FOREGROUND_SERVICE',
-                        'android.permission.WAKE_LOCK'
-                    ];
-                    
-                    // Add notification permission for Android 13+
-                    if (androidVersion >= 13) {
-                        permissions.push('android.permission.POST_NOTIFICATIONS');
-                    }
-                    
-                    // Request permissions
-                    cordova.plugins.permissions.requestPermissions(
-                        permissions,
-                        (success) => {
-                            console.log('Permissions granted:', success);
-                            
-                            // Request battery optimization exemption
-                            this.requestIgnoreBatteryOptimizations();
-                        },
-                        (failure) => {
-                            console.warn('Some permissions denied:', failure);
-                        }
-                    );
-                }
-            } catch (error) {
-                console.error('Permission request failed:', error);
-            }
-        }
-    }
-
-    requestIgnoreBatteryOptimizations() {
-        if (device.platform === 'Android') {
-            try {
-                if (cordova.plugins && cordova.plugins.permissions) {
-                    cordova.plugins.permissions.checkPermission(
-                        'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS',
-                        (status) => {
-                            if (!status.hasPermission) {
-                                console.log('Requesting battery optimization exemption...');
-                                // Note: This requires user to manually enable in settings
-                            }
-                        }
-                    );
-                }
-            } catch (error) {
-                console.error('Battery optimization request failed:', error);
-            }
-        }
-    }
-
-    initBackgroundMode() {
-        try {
-            console.log('Initializing background mode...');
-            
-            // First disable then enable to ensure clean state
-            cordova.plugins.backgroundMode.disable();
-            
-            // Enable background mode
-            cordova.plugins.backgroundMode.enable();
-            
-            // Configure based on platform
-            if (device.platform === 'Android') {
-                cordova.plugins.backgroundMode.configure({
-                    title: 'KLS Radio',
-                    text: 'Playing Gospel Music',
-                    icon: 'ic_notification',
-                    color: 'ff0a0f2d', // ARGB format (alpha + color)
-                    channelName: 'KLS Radio Player',
-                    channelDescription: 'Background audio playback',
-                    importance: 4, // IMPORTANCE_HIGH
-                    allowClose: false,
-                    hidden: false,
-                    bigText: true,
-                    resume: true,
-                    silent: false,
-                    foreground: true, // CRITICAL: Run as foreground service
-                    allowBackground: true,
-                    persistent: true,
-                    autoStart: true
-                });
-            } else {
-                // iOS configuration
-                cordova.plugins.backgroundMode.setDefaults({
-                    title: 'KLS Radio',
-                    text: 'Playing Gospel Music',
-                    hidden: false,
-                    bigText: true
-                });
-            }
-            
-            // Set up event listeners
-            cordova.plugins.backgroundMode.on('activate', () => {
-                console.log('Background mode activated - Starting foreground service');
-                this.updateNotification();
-                
-                // Ensure audio continues playing
-                if (this.isPlaying && this.audio && this.audio.paused) {
-                    this.audio.play().catch(e => console.error('Background play failed:', e));
-                }
-            });
-            
-            cordova.plugins.backgroundMode.on('deactivate', () => {
-                console.log('Background mode deactivated');
-            });
-            
-            cordova.plugins.backgroundMode.on('failure', (errorCode) => {
-                console.error('Background mode failure:', errorCode);
-                // Try to re-enable
-                setTimeout(() => {
-                    cordova.plugins.backgroundMode.enable();
-                }, 1000);
-            });
-            
-            cordova.plugins.backgroundMode.on('enable', () => {
-                console.log('Background mode enabled');
-            });
-            
-            cordova.plugins.backgroundMode.on('disable', () => {
-                console.log('Background mode disabled');
-            });
-            
-            console.log('Background mode initialized successfully');
-            
-        } catch (error) {
-            console.error('Background mode initialization failed:', error);
-        }
-    }
-
-    initMusicControls() {
-        try {
-            console.log('Initializing music controls...');
-            
-            MusicControls.create({
-                track: 'KLS Radio',
-                artist: 'Kingdom Lifestyle Radio',
-                cover: 'icon',
-                isPlaying: false,
-                dismissable: false,
-                hasPrev: true,
-                hasNext: true,
-                hasClose: false,
-                hasSkipForward: false,
-                hasSkipBackward: false,
-                ticker: 'Now playing: KLS Radio',
-                // Android-specific icons
-                playIcon: 'media_play',
-                pauseIcon: 'media_pause',
-                prevIcon: 'media_prev',
-                nextIcon: 'media_next',
-                closeIcon: 'media_close',
-                notificationIcon: 'notification'
-            });
-            
-            // Subscribe to events
-            MusicControls.subscribe((event) => {
-                console.log('MusicControls event received:', event);
-                this.onMusicControlsEvent(event);
-            });
-            
-            // Start listening
-            MusicControls.listen();
-            
-            console.log('Music controls initialized successfully');
-            
-        } catch (error) {
-            console.error('Music controls initialization failed:', error);
-        }
-    }
-
-    onMusicControlsEvent(event) {
-        console.log('MusicControls event:', event);
+        // Request permissions for Android
+        this.requestAndroidPermissions();
         
-        switch(event.message) {
-            case 'music-controls-next':
-                this.nextStation();
-                break;
-            case 'music-controls-previous':
-                this.previousStation();
-                break;
-            case 'music-controls-pause':
-                this.pause();
-                break;
-            case 'music-controls-play':
-                this.play();
-                break;
-            case 'music-controls-toggle-play-pause':
-                if (this.isPlaying) {
-                    this.pause();
-                } else {
-                    this.play();
-                }
-                break;
-            case 'music-controls-destroy':
-                // Handle notification destruction
-                break;
-        }
-    }
-
-    onAppPause() {
-        console.log('App paused');
-        // Keep playing in background
-        if (this.isPlaying && cordova.plugins && cordova.plugins.backgroundMode) {
-            if (!cordova.plugins.backgroundMode.isEnabled()) {
-                cordova.plugins.backgroundMode.enable();
-            }
-        }
-    }
-
-    onAppResume() {
-        console.log('App resumed');
-        if (this.isPlaying) {
-            this.updateNotification();
-        }
-    }
-
-    onVisibilityChange() {
-        console.log('Visibility changed:', document.visibilityState);
-        if (document.visibilityState === 'hidden' && this.isPlaying) {
-            // Ensure background mode is active when app goes to background
-            if (cordova.plugins && cordova.plugins.backgroundMode) {
-                if (!cordova.plugins.backgroundMode.isEnabled()) {
-                    cordova.plugins.backgroundMode.enable();
-                }
-            }
-        }
+        // Initialize background mode
+        this.initBackgroundMode();
+        
+        // Initialize music controls
+        this.initMusicControls();
+        
+        this.isInitialized = true;
+        console.log('CordovaBackgroundAudio: Initialization complete');
     }
 
     initializeStations() {
@@ -318,18 +77,230 @@ class CordovaBackgroundAudio {
                     type: "mp3"
                 }
             ];
-            window.appState.currentStation = 0;
+            window.appState.currentStation = window.appState.currentStation || 0;
+        }
+        
+        console.log('Stations initialized:', window.appState.stations.length);
+    }
+
+    async requestAndroidPermissions() {
+        // Only for Android
+        if (device && device.platform === 'Android') {
+            try {
+                const androidVersion = parseInt(device.version);
+                
+                if (cordova.plugins && cordova.plugins.permissions) {
+                    console.log('Requesting Android permissions...');
+                    
+                    // Request foreground service permission (Android 9+)
+                    if (androidVersion >= 9) {
+                        await this.requestPermission('android.permission.FOREGROUND_SERVICE');
+                    }
+                    
+                    // Request notification permission (Android 13+)
+                    if (androidVersion >= 13) {
+                        await this.requestPermission('android.permission.POST_NOTIFICATIONS');
+                    }
+                    
+                    // Request wake lock permission
+                    await this.requestPermission('android.permission.WAKE_LOCK');
+                    
+                    console.log('All permissions requested');
+                }
+            } catch (error) {
+                console.error('Permission request error:', error);
+            }
+        }
+    }
+
+    requestPermission(permission) {
+        return new Promise((resolve, reject) => {
+            if (cordova.plugins && cordova.plugins.permissions) {
+                cordova.plugins.permissions.checkPermission(
+                    permission,
+                    (status) => {
+                        if (status.hasPermission) {
+                            console.log(`Permission ${permission} already granted`);
+                            resolve(true);
+                        } else {
+                            console.log(`Requesting permission: ${permission}`);
+                            cordova.plugins.permissions.requestPermission(
+                                permission,
+                                (result) => {
+                                    console.log(`Permission ${permission} granted:`, result.hasPermission);
+                                    resolve(result.hasPermission);
+                                },
+                                (error) => {
+                                    console.warn(`Permission ${permission} denied:`, error);
+                                    resolve(false);
+                                }
+                            );
+                        }
+                    },
+                    (error) => {
+                        console.error(`Permission check error for ${permission}:`, error);
+                        resolve(false);
+                    }
+                );
+            } else {
+                resolve(false);
+            }
+        });
+    }
+
+    initBackgroundMode() {
+        if (window.cordova && cordova.plugins && cordova.plugins.backgroundMode) {
+            try {
+                console.log('Initializing background mode...');
+                
+                // Enable background mode
+                cordova.plugins.backgroundMode.enable();
+                
+                // Configure based on platform
+                if (device && device.platform === 'Android') {
+                    // Android configuration
+                    cordova.plugins.backgroundMode.configure({
+                        title: 'KLS Radio',
+                        text: 'Playing Gospel Music',
+                        icon: 'ic_notification',
+                        color: 'ff0a0f2d',
+                        channelName: 'KLS Radio Player',
+                        channelDescription: 'Background audio playback',
+                        importance: 4,
+                        allowClose: false,
+                        hidden: false,
+                        bigText: true,
+                        resume: true,
+                        silent: false,
+                        foreground: true,
+                        allowBackground: true,
+                        persistent: true
+                    });
+                } else {
+                    // iOS/other configuration
+                    cordova.plugins.backgroundMode.setDefaults({
+                        title: 'KLS Radio',
+                        text: 'Playing Gospel Music',
+                        hidden: false,
+                        bigText: true
+                    });
+                }
+                
+                // Event listeners
+                cordova.plugins.backgroundMode.on('activate', () => {
+                    console.log('Background mode activated');
+                    this.updateNotification();
+                });
+                
+                cordova.plugins.backgroundMode.on('deactivate', () => {
+                    console.log('Background mode deactivated');
+                });
+                
+                cordova.plugins.backgroundMode.on('failure', (errorCode) => {
+                    console.error('Background mode failure:', errorCode);
+                });
+                
+                console.log('Background mode initialized');
+                
+            } catch (error) {
+                console.error('Background mode init error:', error);
+            }
+        } else {
+            console.warn('Background mode plugin not available');
+        }
+    }
+
+    initMusicControls() {
+        if (typeof MusicControls !== 'undefined') {
+            try {
+                console.log('Initializing music controls...');
+                
+                MusicControls.create({
+                    track: 'KLS Radio',
+                    artist: 'Kingdom Lifestyle Radio',
+                    cover: 'icon',
+                    isPlaying: false,
+                    dismissable: false,
+                    hasPrev: true,
+                    hasNext: true,
+                    hasClose: false,
+                    ticker: 'Now playing: KLS Radio'
+                });
+                
+                MusicControls.subscribe((event) => {
+                    console.log('MusicControls event:', event);
+                    this.onMusicControlsEvent(event);
+                });
+                
+                MusicControls.listen();
+                console.log('Music controls initialized');
+                
+            } catch (error) {
+                console.error('Music controls init error:', error);
+            }
+        } else {
+            console.warn('MusicControls plugin not available');
+        }
+    }
+
+    onMusicControlsEvent(event) {
+        switch(event.message) {
+            case 'music-controls-next':
+                this.nextStation();
+                break;
+            case 'music-controls-previous':
+                this.previousStation();
+                break;
+            case 'music-controls-pause':
+                this.pause();
+                break;
+            case 'music-controls-play':
+                this.play();
+                break;
+            case 'music-controls-toggle-play-pause':
+                this.togglePlayPause();
+                break;
+        }
+    }
+
+    onAppPause() {
+        console.log('App paused');
+        // Ensure background mode stays active
+        if (this.isPlaying && cordova.plugins && cordova.plugins.backgroundMode) {
+            if (!cordova.plugins.backgroundMode.isEnabled()) {
+                cordova.plugins.backgroundMode.enable();
+            }
+        }
+    }
+
+    onAppResume() {
+        console.log('App resumed');
+        // Update UI state
+        if (window.updatePlayButton) {
+            window.updatePlayButton(this.isPlaying);
+        }
+    }
+
+    onBackButton(e) {
+        // Don't exit app if playing, just minimize
+        if (this.isPlaying) {
+            e.preventDefault();
+            if (navigator.app) {
+                navigator.app.exitApp();
+            } else if (navigator.device) {
+                navigator.device.exitApp();
+            }
         }
     }
 
     playStation(station) {
         if (!station || !station.url) {
             console.error('Invalid station');
-            this.showToast('Invalid station selected', 'error');
+            this.showToast('Invalid station URL', 'error');
             return;
         }
         
-        console.log('Playing station:', station.name, 'URL:', station.url);
+        console.log('Playing station:', station.name);
         this.currentStation = station;
         
         // Stop existing audio
@@ -345,59 +316,53 @@ class CordovaBackgroundAudio {
         this.audio.preload = 'auto';
         this.audio.volume = 1.0;
         
-        // Critical: Set these attributes for mobile playback
+        // Critical for mobile playback
         this.audio.setAttribute('playsinline', 'true');
         this.audio.setAttribute('webkit-playsinline', 'true');
-        this.audio.setAttribute('preload', 'auto');
         
-        // Set up event listeners
+        // Event listeners
+        this.setupAudioEvents();
+        
+        // Start playback
+        this.startPlayback();
+    }
+
+    setupAudioEvents() {
         this.audio.onplaying = () => {
             console.log('Audio playback started');
             this.isPlaying = true;
             this.retryCount = 0;
             
-            // Enable and update background mode
-            if (cordova.plugins && cordova.plugins.backgroundMode) {
-                if (!cordova.plugins.backgroundMode.isEnabled()) {
-                    cordova.plugins.backgroundMode.enable();
-                }
-                
-                // Move to foreground service (Android)
-                if (device.platform === 'Android') {
-                    setTimeout(() => {
-                        try {
-                            cordova.plugins.backgroundMode.moveToForeground();
-                        } catch (e) {
-                            console.log('Move to foreground failed:', e);
-                        }
-                    }, 100);
-                }
-                
-                // Update notification
-                this.updateNotification();
-            }
+            // Enable background mode
+            this.activateBackgroundMode();
             
-            this.onPlaybackStarted(station);
+            // Update UI and notification
+            this.onPlaybackStarted(this.currentStation);
+            this.updateNotification();
         };
         
         this.audio.onpause = () => {
             console.log('Audio paused');
             this.isPlaying = false;
             this.updateNotification();
+            
+            if (window.updatePlayButton) {
+                window.updatePlayButton(false);
+            }
         };
         
         this.audio.onerror = (error) => {
-            console.error('Audio error:', error, this.audio.error);
+            console.error('Audio error:', error);
             this.isPlaying = false;
-            this.onPlaybackError(station);
+            this.onPlaybackError(this.currentStation);
         };
         
         this.audio.onended = () => {
             console.log('Audio ended - restarting...');
             this.isPlaying = false;
             setTimeout(() => {
-                if (this.currentStation === station) {
-                    this.playStation(station);
+                if (this.currentStation) {
+                    this.playStation(this.currentStation);
                 }
             }, 1000);
         };
@@ -409,47 +374,49 @@ class CordovaBackgroundAudio {
         this.audio.onwaiting = () => {
             console.log('Audio waiting - buffering...');
         };
-        
-        this.audio.oncanplay = () => {
-            console.log('Audio can play');
-        };
-        
-        this.audio.oncanplaythrough = () => {
-            console.log('Audio can play through');
-        };
-        
-        // Start playback
+    }
+
+    activateBackgroundMode() {
+        if (cordova.plugins && cordova.plugins.backgroundMode) {
+            if (!cordova.plugins.backgroundMode.isEnabled()) {
+                cordova.plugins.backgroundMode.enable();
+            }
+            
+            // Move to foreground service (Android)
+            if (device && device.platform === 'Android') {
+                setTimeout(() => {
+                    try {
+                        cordova.plugins.backgroundMode.moveToForeground();
+                    } catch (e) {
+                        console.log('Move to foreground failed:', e);
+                    }
+                }, 100);
+            }
+        }
+    }
+
+    startPlayback() {
         this.audio.play()
             .then(() => {
                 console.log('Playback promise resolved');
-                
-                // Enable background mode after successful play
-                setTimeout(() => {
-                    if (cordova.plugins && cordova.plugins.backgroundMode) {
-                        if (!cordova.plugins.backgroundMode.isEnabled()) {
-                            cordova.plugins.backgroundMode.enable();
-                        }
-                        
-                        if (device.platform === 'Android') {
-                            cordova.plugins.backgroundMode.moveToForeground();
-                        }
-                    }
-                }, 500);
             })
             .catch(error => {
                 console.error('Play failed:', error.name, error.message);
                 
-                // Handle autoplay restrictions
                 if (error.name === 'NotAllowedError') {
-                    console.log('Autoplay prevented, user interaction required');
                     this.showToast('Tap play button to start radio', 'info');
                 } else {
-                    this.onPlaybackError(station);
+                    this.onPlaybackError(this.currentStation);
                 }
             });
     }
 
     play() {
+        if (!this.isInitialized) {
+            console.warn('Audio service not initialized yet');
+            return;
+        }
+        
         if (window.appState && window.appState.stations) {
             const stationIndex = window.appState.currentStation || 0;
             const station = window.appState.stations[stationIndex];
@@ -457,11 +424,6 @@ class CordovaBackgroundAudio {
             if (station) {
                 this.playStation(station);
             }
-        } else {
-            // Initialize and play default station
-            this.initializeStations();
-            const station = window.appState.stations[0];
-            this.playStation(station);
         }
     }
 
@@ -471,6 +433,18 @@ class CordovaBackgroundAudio {
             this.audio.pause();
             this.isPlaying = false;
             this.updateNotification();
+            
+            if (window.updatePlayButton) {
+                window.updatePlayButton(false);
+            }
+        }
+    }
+
+    togglePlayPause() {
+        if (this.isPlaying) {
+            this.pause();
+        } else {
+            this.play();
         }
     }
 
@@ -482,6 +456,10 @@ class CordovaBackgroundAudio {
             this.audio = null;
             this.isPlaying = false;
             this.updateNotification();
+            
+            if (window.updatePlayButton) {
+                window.updatePlayButton(false);
+            }
         }
     }
 
@@ -495,11 +473,15 @@ class CordovaBackgroundAudio {
             if (station) {
                 console.log('Switching to next station:', station.name);
                 window.appState.currentStation = nextIndex;
-                this.playStation(station);
                 
                 // Update UI
                 if (window.updateRadioDisplay) {
                     window.updateRadioDisplay();
+                }
+                
+                // Play if currently playing
+                if (this.isPlaying) {
+                    this.playStation(station);
                 }
             }
         }
@@ -515,19 +497,21 @@ class CordovaBackgroundAudio {
             if (station) {
                 console.log('Switching to previous station:', station.name);
                 window.appState.currentStation = prevIndex;
-                this.playStation(station);
                 
                 // Update UI
                 if (window.updateRadioDisplay) {
                     window.updateRadioDisplay();
+                }
+                
+                // Play if currently playing
+                if (this.isPlaying) {
+                    this.playStation(station);
                 }
             }
         }
     }
 
     updateNotification() {
-        console.log('Updating notification, isPlaying:', this.isPlaying);
-        
         // Update music controls
         if (typeof MusicControls !== 'undefined') {
             const station = this.currentStation || { 
@@ -539,13 +523,8 @@ class CordovaBackgroundAudio {
                 MusicControls.updateIsPlaying(this.isPlaying);
                 MusicControls.update({
                     track: station.name,
-                    artist: station.description || 'Gospel Radio',
-                    cover: 'icon',
-                    isPlaying: this.isPlaying,
-                    dismissable: false,
-                    hasPrev: true,
-                    hasNext: true,
-                    ticker: this.isPlaying ? `Playing: ${station.name}` : 'Paused'
+                    artist: station.description,
+                    isPlaying: this.isPlaying
                 });
             } catch (error) {
                 console.error('Music controls update failed:', error);
@@ -563,14 +542,12 @@ class CordovaBackgroundAudio {
                 if (this.isPlaying) {
                     cordova.plugins.backgroundMode.configure({
                         text: `Playing: ${station.name}`,
-                        title: 'KLS Radio',
-                        icon: 'ic_notification'
+                        title: 'KLS Radio'
                     });
                 } else {
                     cordova.plugins.backgroundMode.configure({
-                        text: 'Paused - Tap to resume',
-                        title: 'KLS Radio',
-                        icon: 'ic_notification'
+                        text: 'Paused',
+                        title: 'KLS Radio'
                     });
                 }
             } catch (error) {
@@ -598,13 +575,12 @@ class CordovaBackgroundAudio {
     onPlaybackError(station) {
         console.error(`Playback error for: ${station.name}`);
         
-        // Increment retry count
         this.retryCount++;
         
         if (this.retryCount <= this.maxRetries) {
-            this.showToast(`Reconnecting to ${station.name}... (${this.retryCount}/${this.maxRetries})`, 'warning');
+            this.showToast(`Reconnecting... (${this.retryCount}/${this.maxRetries})`, 'warning');
             
-            // Try to reconnect after delay
+            // Retry after delay
             setTimeout(() => {
                 if (this.currentStation === station) {
                     console.log(`Retry attempt ${this.retryCount} for ${station.name}`);
@@ -616,7 +592,7 @@ class CordovaBackgroundAudio {
             this.isPlaying = false;
             this.updateNotification();
             
-            // Reset retry count after max retries
+            // Reset retry count
             setTimeout(() => {
                 this.retryCount = 0;
             }, 10000);
@@ -624,7 +600,7 @@ class CordovaBackgroundAudio {
     }
 
     showToast(message, type = 'info') {
-        // Simple toast implementation
+        // Create toast element
         const toast = document.createElement('div');
         toast.style.cssText = `
             position: fixed;
@@ -644,6 +620,7 @@ class CordovaBackgroundAudio {
         toast.textContent = message;
         document.body.appendChild(toast);
         
+        // Remove after 3 seconds
         setTimeout(() => {
             toast.style.animation = 'slideOut 0.3s ease';
             setTimeout(() => {
@@ -655,11 +632,11 @@ class CordovaBackgroundAudio {
     }
 }
 
-// Create global instance
+// Create global instance immediately
 window.cordovaAudio = new CordovaBackgroundAudio();
 
-// Add CSS for animations if not already present
-if (!document.querySelector('#toast-animations')) {
+// Add CSS animations
+if (typeof document !== 'undefined' && !document.querySelector('#toast-animations')) {
     const style = document.createElement('style');
     style.id = 'toast-animations';
     style.textContent = `
