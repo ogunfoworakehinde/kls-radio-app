@@ -12,9 +12,9 @@
 
     <content src="index.html" />
     <access origin="*" />
-    <allow-navigation href="*" />
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
+    <allow-navigation href="*" />
     
     <preference name="SplashScreen" value="screen" />
     <preference name="SplashScreenDelay" value="3000" />
@@ -29,21 +29,15 @@
 
     <!-- Android platform specific -->
     <platform name="android">
-        <!-- FIXED: compileSdkVersion should be >= targetSdkVersion -->
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="35" />
-        <preference name="android-compileSdkVersion" value="35" /> <!-- Changed from 34 to 35 -->
+        <preference name="android-compileSdkVersion" value="35" />
         <preference name="android-installLocation" value="auto" />
         <preference name="android-backgroundColor" value="#0a0f2d" />
         <preference name="android-maxSdkVersion" value="35" />
         <preference name="versionCode" value="1206" />
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
-        
-        <!-- Custom preferences for background audio -->
-        <preference name="GradlePluginGoogleServicesVersion" value="4.3.15" />
-        <preference name="GradlePluginKotlinVersion" value="1.8.22" />
-        <preference name="kotlinVersion" value="1.8.22" />
 
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
@@ -52,7 +46,7 @@
         <icon density="xxhdpi" src="www/images/icon.png" />
         <icon density="xxxhdpi" src="www/images/icon.png" />
 
-        <!-- Permissions - SIMPLIFIED VERSION -->
+        <!-- Permissions -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -61,10 +55,9 @@
             <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
             <uses-permission android:name="android.permission.BLUETOOTH" />
             <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
-            <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
         </edit-config>
 
-        <!-- Application configuration - SIMPLIFIED (removed service config that was causing issues) -->
+        <!-- Application configuration -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application
                 android:allowBackup="false"
@@ -73,16 +66,9 @@
                 android:hardwareAccelerated="true" />
         </edit-config>
 
-        <!-- REMOVED: resource-file reference that doesn't exist -->
-        <!-- <resource-file src="resources/android/notification_icon.xml" target="app/src/main/res/drawable/notification_icon.xml" /> -->
-        
-        <!-- Only add actual files that exist -->
-        <resource-file src="www/images/ic_notification.png" target="app/src/main/res/drawable/ic_notification.png" />
-        <resource-file src="www/images/icon.png" target="app/src/main/res/drawable/icon.png" />
-
     </platform>
 
-    <!-- iOS configuration if needed -->
+    <!-- iOS configuration -->
     <platform name="ios">
         <preference name="target-device" value="universal" />
         <preference name="deployment-target" value="14.0" />
@@ -92,7 +78,6 @@
             </array>
         </config-file>
         
-        <!-- Allow mixed content for streaming -->
         <edit-config target="NSAppTransportSecurity" file="*-Info.plist">
             <dict>
                 <key>NSAllowsArbitraryLoads</key>
@@ -103,17 +88,17 @@
         </edit-config>
     </platform>
 
-    <!-- Essential plugins with specific versions -->
-    <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
-    <plugin name="cordova-plugin-media" spec="^5.0.3" />
-    <plugin name="cordova-plugin-music-controls2" spec="^3.0.7" />
-    <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
-    <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
-    <plugin name="cordova-plugin-splashscreen" spec="^6.0.1" />
-    <plugin name="cordova-plugin-statusbar" spec="^4.0.0" />
-    <plugin name="cordova-plugin-device" spec="^3.0.0" />
-    <plugin name="cordova-plugin-powermanagement" spec="^1.0.5" />
+    <!-- Essential plugins -->
     <plugin name="cordova-plugin-whitelist" spec="^1.3.5" />
     <plugin name="cordova-plugin-file" spec="^7.0.0" />
+    <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
+    <plugin name="cordova-plugin-device" spec="^3.0.0" />
+    <plugin name="cordova-plugin-splashscreen" spec="^6.0.1" />
+    <plugin name="cordova-plugin-statusbar" spec="^4.0.0" />
+    <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
+    <plugin name="cordova-plugin-powermanagement" spec="^1.0.5" />
+    <plugin name="cordova-plugin-media" spec="^5.0.3" />
+    <plugin name="cordova-plugin-music-controls2" spec="^3.0.7" />
+    <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
 
 </widget>
