@@ -1,355 +1,463 @@
-/**
- * Background Audio Controller for KLS Radio
- * Handles background playback and lock screen controls
- */
+// js/background-audio.js - Complete Background Audio Management
 
-class BackgroundAudio {
+class BackgroundAudioManager {
     constructor() {
         this.isPlaying = false;
-        this.currentMedia = null;
         this.currentStation = null;
-        this.isBackgroundMode = false;
-        this.mediaSession = null;
-        this.init();
+        this.media = null;
+        this.currentTime = 0;
+        this.duration = 0;
+        this.volume = 1.0;
+        this.backgroundModeEnabled = false;
+        this.musicControlsInitialized = false;
+        
+        // Initialize when device is ready
+        document.addEventListener('deviceready', this.init.bind(this), false);
     }
 
-    init() {
-        // Wait for Cordova to load
-        document.addEventListener('deviceready', () => {
-            console.log('Cordova ready, initializing background audio...');
-            this.setupBackgroundMode();
-            this.setupMusicControls();
-            this.setupMediaSession();
-        }, false);
-    }
-
-    setupBackgroundMode() {
-        if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
-            console.log('Setting up background mode...');
+    async init() {
+        console.log('BackgroundAudioManager: Initializing...');
+        
+        try {
+            // Initialize background mode
+            await this.initBackgroundMode();
             
+            // Request permissions for Android 13+
+            await this.requestPermissions();
+            
+            // Initialize music controls for lock screen
+            await this.initMusicControls();
+            
+            // Set up media session for Android 12+
+            this.setupMediaSession();
+            
+            // Set up event listeners
+            this.setupEventListeners();
+            
+            console.log('BackgroundAudioManager: Initialized successfully');
+        } catch (error) {
+            console.error('BackgroundAudioManager: Initialization failed', error);
+        }
+    }
+
+    async initBackgroundMode() {
+        return new Promise((resolve) => {
+            if (typeof cordova === 'undefined' || !cordova.plugins || !cordova.plugins.backgroundMode) {
+                console.warn('BackgroundMode plugin not available');
+                resolve(false);
+                return;
+            }
+
+            cordova.plugins.backgroundMode.enable();
+            cordova.plugins.backgroundMode.on('activate', () => {
+                console.log('BackgroundMode: App is now in background');
+                this.backgroundModeEnabled = true;
+                
+                // Keep CPU awake
+                cordova.plugins.backgroundMode.disableWebViewOptimizations();
+                
+                // Update notification
+                this.updateNotification();
+            });
+
+            cordova.plugins.backgroundMode.on('deactivate', () => {
+                console.log('BackgroundMode: App is now in foreground');
+                this.backgroundModeEnabled = false;
+            });
+
             // Configure background mode
             cordova.plugins.backgroundMode.setDefaults({
                 title: 'KLS Radio',
-                text: 'Playing Gospel Music',
-                color: '#0a0f2d',
+                text: 'Playing: Kingdom Lifestyle Radio',
+                icon: 'icon',
+                color: '0a0f2d',
                 resume: true,
                 hidden: false,
-                bigText: true
+                bigText: true,
+                silent: false
             });
 
-            // Enable background mode
-            cordova.plugins.backgroundMode.enable();
-            
-            // When app goes to background
-            cordova.plugins.backgroundMode.on('activate', () => {
-                console.log('App entered background mode');
-                this.isBackgroundMode = true;
-                
-                // Ensure audio keeps playing
-                if (this.isPlaying && this.currentMedia) {
-                    this.play();
-                }
-            });
-
-            // When app returns to foreground
-            cordova.plugins.backgroundMode.on('deactivate', () => {
-                console.log('App returned to foreground');
-                this.isBackgroundMode = false;
-            });
-
-            console.log('Background mode configured');
-        } else {
-            console.warn('Background mode plugin not available');
-        }
+            this.backgroundModeEnabled = true;
+            console.log('BackgroundMode: Enabled');
+            resolve(true);
+        });
     }
 
-    setupMusicControls() {
-        if (window.MusicControls) {
-            console.log('Setting up music controls...');
-            
-            // Create notification channel for Android 8.0+
-            if (window.device && window.device.platform === 'Android') {
-                MusicControls.createNotificationChannel({
-                    id: 'kls_radio_channel',
-                    name: 'KLS Radio Playback',
-                    description: 'Controls for KLS Radio playback',
-                    importance: 'high',
-                    visibility: 'public'
-                });
+    async requestPermissions() {
+        return new Promise((resolve) => {
+            if (typeof cordova === 'undefined' || !cordova.plugins || !cordova.plugins.permissions) {
+                console.warn('Permissions plugin not available');
+                resolve(false);
+                return;
             }
-            
-            // Setup music controls event listeners
-            MusicControls.subscribe((action) => {
-                console.log('Music control action:', action);
-                
-                switch(action) {
-                    case 'play':
-                        this.play();
-                        break;
-                    case 'pause':
-                        this.pause();
-                        break;
-                    case 'next':
-                        if (window.switchChannel) {
-                            window.switchChannel(1);
-                        }
-                        break;
-                    case 'previous':
-                        if (window.switchChannel) {
-                            window.switchChannel(-1);
-                        }
-                        break;
-                    case 'close':
-                        this.stop();
-                        break;
-                    case 'music-controls-next':
-                        if (window.switchChannel) {
-                            window.switchChannel(1);
-                        }
-                        break;
-                    case 'music-controls-previous':
-                        if (window.switchChannel) {
-                            window.switchChannel(-1);
-                        }
-                        break;
-                    case 'music-controls-pause':
-                        this.pause();
-                        break;
-                    case 'music-controls-play':
-                        this.play();
-                        break;
-                    case 'music-controls-destroy':
-                        this.stop();
-                        break;
+
+            const permissions = cordova.plugins.permissions;
+            const permissionList = [
+                permissions.POST_NOTIFICATIONS,
+                permissions.FOREGROUND_SERVICE,
+                permissions.WAKE_LOCK,
+                'android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS'
+            ];
+
+            permissions.requestPermissions(permissionList, (status) => {
+                if (status.hasPermission) {
+                    console.log('Permissions: Granted');
+                    resolve(true);
+                } else {
+                    console.warn('Permissions: Some permissions denied');
+                    resolve(false);
                 }
-                
-                // Update music controls
-                this.updateMusicControls();
-            });
-            
-            // Listen to errors
-            MusicControls.listen((error) => {
-                console.error('MusicControls error:', error);
-            });
-            
-            console.log('Music controls configured');
-        } else {
-            console.warn('MusicControls plugin not available');
-        }
+            }, null);
+        });
+    }
+
+    async initMusicControls() {
+        return new Promise((resolve) => {
+            if (typeof MusicControls === 'undefined') {
+                console.warn('MusicControls plugin not available');
+                resolve(false);
+                return;
+            }
+
+            try {
+                // Create initial music controls
+                MusicControls.create({
+                    track: 'Kingdom Lifestyle Radio',
+                    artist: '24/7 Gospel Streaming',
+                    cover: 'images/icon.png',
+                    isPlaying: false,
+                    dismissable: false,
+                    hasPrev: true,
+                    hasNext: true,
+                    hasClose: false,
+                    hasSkipForward: false,
+                    hasSkipBackward: false,
+                    hasScrubbing: false,
+                    ticker: 'Now playing: Kingdom Lifestyle Radio',
+                    playIcon: 'play_arrow',
+                    pauseIcon: 'pause',
+                    prevIcon: 'skip_previous',
+                    nextIcon: 'skip_next',
+                    closeIcon: 'close',
+                    notificationIcon: 'notification_icon'
+                }, () => {
+                    console.log('MusicControls: Created successfully');
+                    this.musicControlsInitialized = true;
+                    
+                    // Subscribe to events
+                    MusicControls.subscribe((event) => {
+                        this.handleMusicControlsEvent(event);
+                    });
+                    
+                    MusicControls.listen();
+                    resolve(true);
+                }, (error) => {
+                    console.error('MusicControls: Creation failed', error);
+                    resolve(false);
+                });
+            } catch (error) {
+                console.error('MusicControls: Initialization error', error);
+                resolve(false);
+            }
+        });
     }
 
     setupMediaSession() {
-        // Check if media session API is available
         if ('mediaSession' in navigator) {
-            console.log('Setting up Media Session API...');
-            
-            // Set action handlers
             navigator.mediaSession.setActionHandler('play', () => {
-                console.log('Media Session: Play requested');
                 this.play();
             });
             
             navigator.mediaSession.setActionHandler('pause', () => {
-                console.log('Media Session: Pause requested');
                 this.pause();
             });
             
             navigator.mediaSession.setActionHandler('previoustrack', () => {
-                console.log('Media Session: Previous track requested');
-                if (window.switchChannel) {
-                    window.switchChannel(-1);
-                }
+                this.previous();
             });
             
             navigator.mediaSession.setActionHandler('nexttrack', () => {
-                console.log('Media Session: Next track requested');
-                if (window.switchChannel) {
-                    window.switchChannel(1);
+                this.next();
+            });
+            
+            navigator.mediaSession.setActionHandler('seekbackward', () => {
+                // Handle seek backward
+            });
+            
+            navigator.mediaSession.setActionHandler('seekforward', () => {
+                // Handle seek forward
+            });
+            
+            console.log('MediaSession: Configured');
+        }
+    }
+
+    setupEventListeners() {
+        // Handle app pause/resume
+        document.addEventListener('pause', () => {
+            console.log('App: Paused');
+            if (this.isPlaying && this.backgroundModeEnabled) {
+                this.updateNotification();
+            }
+        }, false);
+
+        document.addEventListener('resume', () => {
+            console.log('App: Resumed');
+            if (this.backgroundModeEnabled) {
+                this.updateNotification();
+            }
+        }, false);
+
+        // Handle device going to sleep
+        document.addEventListener('deviceready', () => {
+            if (cordova.plugins && cordova.plugins.powerManagement) {
+                cordova.plugins.powerManagement.acquire();
+                console.log('PowerManagement: Wake lock acquired');
+            }
+        }, false);
+    }
+
+    handleMusicControlsEvent(event) {
+        console.log('MusicControls: Event received', event);
+        
+        switch (event.message) {
+            case 'music-controls-next':
+                this.next();
+                break;
+                
+            case 'music-controls-previous':
+                this.previous();
+                break;
+                
+            case 'music-controls-pause':
+                this.pause();
+                break;
+                
+            case 'music-controls-play':
+                this.play();
+                break;
+                
+            case 'music-controls-destroy':
+                // Handle destroy if needed
+                break;
+                
+            case 'music-controls-toggle-play-pause':
+                if (this.isPlaying) {
+                    this.pause();
+                } else {
+                    this.play();
                 }
-            });
-            
-            navigator.mediaSession.setActionHandler('stop', () => {
-                console.log('Media Session: Stop requested');
-                this.stop();
-            });
-            
-            console.log('Media Session API configured');
-        } else {
-            console.warn('Media Session API not available');
+                break;
+                
+            case 'music-controls-seek-to':
+                if (event.position !== undefined) {
+                    this.seek(event.position);
+                }
+                break;
+                
+            case 'music-controls-skip-forward':
+                // Handle skip forward
+                break;
+                
+            case 'music-controls-skip-backward':
+                // Handle skip backward
+                break;
         }
     }
 
     playStation(station) {
-        console.log('Playing station:', station);
+        if (!station || !station.url) {
+            console.error('BackgroundAudioManager: Invalid station');
+            return;
+        }
+
         this.currentStation = station;
         
-        // Stop any existing playback
-        if (this.currentMedia) {
+        // Stop current playback if any
+        if (this.media) {
             this.stop();
         }
-        
-        // Create audio element for streaming
-        const audio = new Audio(station.url);
-        audio.crossOrigin = "anonymous";
-        audio.preload = "auto";
-        audio.volume = window.appState ? window.appState.settings.radioVolume : 1;
-        
-        // Set up event listeners
-        audio.addEventListener('playing', () => {
-            this.isPlaying = true;
-            console.log('Audio playback started');
-            this.updateMusicControls();
-        });
-        
-        audio.addEventListener('pause', () => {
-            if (!window.appState || !window.appState.radioShouldPlay) {
+
+        // Create new media instance
+        this.media = new Media(station.url, 
+            () => {
+                console.log('Media: Playback started');
+                this.isPlaying = true;
+                this.updateNotification();
+                this.updatePlaybackState();
+            },
+            (error) => {
+                console.error('Media: Playback error', error);
                 this.isPlaying = false;
-                console.log('Audio playback paused by user');
+                this.updateNotification();
+                
+                // Try to reconnect after error
+                setTimeout(() => {
+                    if (this.currentStation) {
+                        this.playStation(this.currentStation);
+                    }
+                }, 3000);
+            },
+            (status) => {
+                if (status === Media.MEDIA_STOPPED) {
+                    console.log('Media: Playback stopped');
+                    this.isPlaying = false;
+                }
             }
-            this.updateMusicControls();
-        });
-        
-        audio.addEventListener('error', (e) => {
-            console.error('Audio error:', e);
-            this.handlePlaybackError();
-        });
-        
-        audio.addEventListener('ended', () => {
-            console.log('Audio stream ended, auto-restarting...');
-            setTimeout(() => {
-                this.playStation(station);
-            }, 1000);
-        });
+        );
+
+        // Set volume
+        this.media.setVolume(this.volume.toString());
         
         // Start playback
-        audio.play().then(() => {
-            this.isPlaying = true;
-            this.currentMedia = audio;
-            this.updateMusicControls();
-            console.log('Station playback started');
-        }).catch(error => {
-            console.error('Playback error:', error);
-            this.handlePlaybackError();
-        });
+        this.media.play();
+        
+        // Enable background mode if available
+        if (this.backgroundModeEnabled && cordova.plugins.backgroundMode) {
+            cordova.plugins.backgroundMode.enable();
+        }
     }
 
     play() {
-        if (this.currentMedia && !this.isPlaying) {
-            this.currentMedia.play().then(() => {
-                this.isPlaying = true;
-                this.updateMusicControls();
-                console.log('Playback resumed');
-            }).catch(error => {
-                console.error('Resume error:', error);
-            });
-        } else if (this.currentStation && !this.currentMedia) {
+        if (this.media && !this.isPlaying) {
+            this.media.play();
+            this.isPlaying = true;
+            this.updateNotification();
+            this.updatePlaybackState();
+        } else if (this.currentStation && !this.media) {
             this.playStation(this.currentStation);
         }
     }
 
     pause() {
-        if (this.currentMedia && this.isPlaying) {
-            this.currentMedia.pause();
+        if (this.media && this.isPlaying) {
+            this.media.pause();
             this.isPlaying = false;
-            this.updateMusicControls();
-            console.log('Playback paused');
+            this.updateNotification();
+            this.updatePlaybackState();
         }
     }
 
     stop() {
-        if (this.currentMedia) {
-            this.currentMedia.pause();
-            this.currentMedia.currentTime = 0;
+        if (this.media) {
+            this.media.stop();
+            this.media.release();
+            this.media = null;
             this.isPlaying = false;
-            this.updateMusicControls();
-            console.log('Playback stopped');
-            
-            // Clear references
-            this.currentMedia = null;
+            this.updateNotification();
+            this.updatePlaybackState();
         }
     }
 
-    updateMusicControls() {
-        if (!this.currentStation) return;
-        
-        const station = this.currentStation;
-        
-        // Update Media Session API if available
-        if ('mediaSession' in navigator) {
-            navigator.mediaSession.metadata = new MediaMetadata({
-                title: station.name,
-                artist: 'Kingdom Lifestyle Radio',
-                album: '24/7 Gospel Streaming',
-                artwork: [
-                    {
-                        src: 'https://kingdomlifestyleradio.com/logo.png',
-                        sizes: '96x96',
-                        type: 'image/png'
-                    }
-                ]
-            });
+    next() {
+        // Implement next station logic
+        if (window.appState && window.appState.stations) {
+            const currentIndex = window.appState.currentStation || 0;
+            const nextIndex = (currentIndex + 1) % window.appState.stations.length;
+            const nextStation = window.appState.stations[nextIndex];
             
-            navigator.mediaSession.playbackState = this.isPlaying ? 'playing' : 'paused';
+            if (nextStation) {
+                window.appState.currentStation = nextIndex;
+                this.playStation(nextStation);
+                
+                // Update UI if available
+                if (window.updateRadioDisplay) {
+                    window.updateRadioDisplay();
+                }
+            }
         }
-        
-        // Update Music Controls plugin if available
-        if (window.MusicControls) {
-            MusicControls.updateIsPlaying(this.isPlaying);
+    }
+
+    previous() {
+        // Implement previous station logic
+        if (window.appState && window.appState.stations) {
+            const currentIndex = window.appState.currentStation || 0;
+            const prevIndex = (currentIndex - 1 + window.appState.stations.length) % window.appState.stations.length;
+            const prevStation = window.appState.stations[prevIndex];
             
-            MusicControls.updateMetadata({
-                artist: 'Kingdom Lifestyle Radio',
-                title: station.name,
-                album: '24/7 Gospel Streaming',
-                genre: 'Gospel',
-                duration: 0, // Live stream
-                elapsed: 0,
-                ticker: `Now Playing: ${station.name}`,
-                artwork: 'https://kingdomlifestyleradio.com/logo.png',
+            if (prevStation) {
+                window.appState.currentStation = prevIndex;
+                this.playStation(prevStation);
+                
+                // Update UI if available
+                if (window.updateRadioDisplay) {
+                    window.updateRadioDisplay();
+                }
+            }
+        }
+    }
+
+    seek(position) {
+        if (this.media && position >= 0) {
+            this.media.seekTo(position * 1000); // Convert to milliseconds
+        }
+    }
+
+    setVolume(level) {
+        this.volume = Math.max(0, Math.min(1, level));
+        if (this.media) {
+            this.media.setVolume(this.volume.toString());
+        }
+    }
+
+    updateNotification() {
+        if (!this.musicControlsInitialized || typeof MusicControls === 'undefined') {
+            return;
+        }
+
+        try {
+            const station = this.currentStation || { name: 'Kingdom Lifestyle Radio', description: '24/7 Gospel Streaming' };
+            
+            MusicControls.updateIsPlaying(this.isPlaying);
+            MusicControls.update({
+                track: station.name,
+                artist: station.description,
+                cover: 'images/icon.png',
                 isPlaying: this.isPlaying,
                 dismissable: false,
                 hasPrev: true,
                 hasNext: true,
-                hasSkipForward: false,
-                hasSkipBackward: false,
-                skipForwardInterval: 0,
-                skipBackwardInterval: 0,
-                hasScrubbing: false,
-                playIcon: 'media_play',
-                pauseIcon: 'media_pause',
-                prevIcon: 'media_previous',
-                nextIcon: 'media_next',
-                closeIcon: 'media_close'
+                ticker: `Now playing: ${station.name}`
             });
+        } catch (error) {
+            console.error('MusicControls: Update failed', error);
+        }
+    }
+
+    updatePlaybackState() {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.playbackState = this.isPlaying ? 'playing' : 'paused';
             
-            console.log('Music controls updated');
-        }
-    }
-
-    handlePlaybackError() {
-        console.error('Playback error occurred');
-        this.isPlaying = false;
-        this.updateMusicControls();
-        
-        // Try to reconnect after 5 seconds
-        setTimeout(() => {
-            if (this.currentStation && !this.isPlaying) {
-                console.log('Attempting to reconnect...');
-                this.playStation(this.currentStation);
+            if (this.currentStation) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: this.currentStation.name,
+                    artist: this.currentStation.description,
+                    artwork: [
+                        { src: 'images/icon.png', sizes: '96x96', type: 'image/png' },
+                        { src: 'images/icon.png', sizes: '128x128', type: 'image/png' },
+                        { src: 'images/icon.png', sizes: '192x192', type: 'image/png' },
+                        { src: 'images/icon.png', sizes: '256x256', type: 'image/png' },
+                        { src: 'images/icon.png', sizes: '384x384', type: 'image/png' },
+                        { src: 'images/icon.png', sizes: '512x512', type: 'image/png' }
+                    ]
+                });
             }
-        }, 5000);
+        }
     }
 
-    // Clean up
-    destroy() {
-        this.stop();
-        if (window.MusicControls) {
-            MusicControls.destroy();
-        }
-        if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
-            cordova.plugins.backgroundMode.disable();
-        }
+    // Public API
+    getCurrentStation() {
+        return this.currentStation;
+    }
+
+    getIsPlaying() {
+        return this.isPlaying;
+    }
+
+    getVolume() {
+        return this.volume;
     }
 }
 
-// Export as global
-window.BackgroundAudio = BackgroundAudio;
+// Create global instance
+window.BackgroundAudioManager = new BackgroundAudioManager();
