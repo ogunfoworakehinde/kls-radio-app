@@ -2359,26 +2359,43 @@ const isCordova = !!window.cordova;
 // Wait for Cordova to load
 document.addEventListener('deviceready', function() {
     console.log('Cordova is ready!');
-    
-    // Hide native splash
+
+    // 1. Hide the native splash
     navigator.splashscreen.hide();
 
-    // Request notification permission (Android 13+)
-    if (window.cordova && window.cordova.plugins && window.cordova.plugins.permissions) {
-        // Using cordova-plugin-android-permissions (if present) or direct check
-        // If not, we can use a simple prompt via Notification.requestPermission for web fallback,
-        // but for native, we need to use the plugin. We already have POST_NOTIFICATIONS in manifest,
-        // so the user will be prompted on first notification creation. However, some plugins require
-        // explicit request. We'll just attempt to create the notification, which triggers the system
-        // permission dialog on Android 13+ automatically.
+    // 2. Request notification permission on Android 13+
+    if (isCordova && window.cordova.plugins && window.cordova.plugins.permissions) {
+        var permissions = cordova.plugins.permissions;
+        permissions.requestPermission(
+            permissions.POST_NOTIFICATIONS,
+            function(status) {
+                console.log('POST_NOTIFICATIONS status: ' + status.hasPermission);
+                // Even if denied, we still try to create the widget (user can enable later)
+                initMusicControls();
+            },
+            function(error) {
+                console.error('Permission request error: ' + error);
+                // Still try to initialise
+                initMusicControls();
+            }
+        );
+    } else {
+        // Fallback (older Android or no permission plugin)
+        initMusicControls();
     }
 
-    // Initialize music controls (lock screen widget)
+    // 3. Enable background mode
+    if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
+        window.cordova.plugins.backgroundMode.enable();
+    }
+}, false);
+
+function initMusicControls() {
     if (isCordova && window.MusicControls) {
         window.MusicControls.create({
             track: 'Kingdom Lifestyle Radio',
             artist: 'Tap to play',
-            cover: 'img/radio_icon.png',   // optional, can be a local file
+            cover: 'img/radio_icon.png',
             isPlaying: false,
             dismissable: true,
             hasPrev: true,
@@ -2391,42 +2408,24 @@ document.addEventListener('deviceready', function() {
 
         window.MusicControls.subscribe(onMusicControlsEvent);
     }
+}
 
-    // Enable background mode
-    if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
-        window.cordova.plugins.backgroundMode.enable();
-    }
-}, false);
-
-// MusicControls callbacks
 function onMusicControlsSuccess() {
-    console.log('MusicControls created');
+    console.log('MusicControls created successfully');
 }
 
 function onMusicControlsError(error) {
-    console.error('MusicControls error:', error);
+    console.error('MusicControls creation error:', error);
 }
 
 function onMusicControlsEvent(action) {
-    const message = JSON.parse(action).message;
+    var message = JSON.parse(action).message;
     switch (message) {
-        case 'music-controls-play':
-            playRadio();
-            break;
-        case 'music-controls-pause':
-            pauseRadio();
-            break;
-        case 'music-controls-next':
-            switchChannel(1);
-            break;
-        case 'music-controls-previous':
-            switchChannel(-1);
-            break;
-        case 'music-controls-destroy':
-            stopRadio();
-            break;
-        default:
-            break;
+        case 'music-controls-play':   playRadio(); break;
+        case 'music-controls-pause':  pauseRadio(); break;
+        case 'music-controls-next':   switchChannel(1); break;
+        case 'music-controls-previous': switchChannel(-1); break;
+        case 'music-controls-destroy': stopRadio(); break;
     }
 }
 

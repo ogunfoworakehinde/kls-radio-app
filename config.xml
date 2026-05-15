@@ -22,9 +22,7 @@
     <preference name="KeepRunning" value="true" />
     <preference name="AndroidPersistentFileLocation" value="Compatibility" />
     <preference name="loadUrlTimeoutValue" value="700000" />
-    <preference name="cordova_default_package" value="com.kingdomlifestyleradio.klsradio" />
 
-    <!-- Android platform specific -->
     <platform name="android">
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="36" />
@@ -35,16 +33,18 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
-        <!-- Android 12+ SplashScreen API -->
+        <!-- Android 12+ SplashScreen -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="AutoHideSplashScreen" value="false" />
         <preference name="SplashScreenDelay" value="0" />
         <preference name="SplashScreenBackgroundColor" value="#05081a" />
-        <!-- Use the drawable name copied via resource-file below -->
-        <preference name="SplashScreenImage" value="splash_icon" />
+        <!-- Use the drawable name we will copy -->
+        <preference name="SplashScreenImage" value="splash_logo" />
+        <!-- Also set the animated icon (Android 12+ requires both) -->
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="splash_logo" />
 
-        <!-- Copy splash image to drawable folder reliably -->
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/drawable/splash_icon.png" />
+        <!-- Copy the 512x512 PNG directly to the drawable folder -->
+        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/drawable/splash_logo.png" />
 
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
@@ -53,7 +53,7 @@
         <icon density="xxhdpi" src="www/images/icon.png" />
         <icon density="xxxhdpi" src="www/images/icon.png" />
 
-        <!-- Permissions -->
+        <!-- Permissions (including POST_NOTIFICATIONS for Android 13+) -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -62,7 +62,6 @@
             <uses-permission android:name="android.permission.WAKE_LOCK" />
         </edit-config>
 
-        <!-- Application configuration -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application
                 android:allowBackup="false"
@@ -72,7 +71,6 @@
         </edit-config>
     </platform>
 
-    <!-- iOS configuration -->
     <platform name="ios">
         <preference name="target-device" value="universal" />
         <preference name="deployment-target" value="14.0" />
@@ -81,7 +79,6 @@
                 <string>audio</string>
             </array>
         </config-file>
-        
         <edit-config target="NSAppTransportSecurity" file="*-Info.plist">
             <dict>
                 <key>NSAllowsArbitraryLoads</key>
@@ -92,7 +89,7 @@
         </edit-config>
     </platform>
 
-    <!-- PLUGINS -->
+    <!-- PLUGINS (re-added android-permissions for notification request) -->
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
     <plugin name="cordova-plugin-device" spec="^3.0.0" />
     <plugin name="cordova-plugin-file" spec="^6.0.2" />
@@ -101,4 +98,5 @@
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     <plugin name="cordova-plugin-powermanagement" spec="^1.0.5" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
+    <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
 </widget>
