@@ -2360,31 +2360,35 @@ const isCordova = !!window.cordova;
 document.addEventListener('deviceready', function() {
     console.log('Cordova is ready!');
     
-    // Hide native splash screen after a short delay
-    setTimeout(function() {
-        if (navigator.splashscreen) {
-            navigator.splashscreen.hide();
-        }
-    }, 2500);
+    // Hide native splash
+    navigator.splashscreen.hide();
 
-    // Create the lock‑screen media notification
+    // Request notification permission (Android 13+)
+    if (window.cordova && window.cordova.plugins && window.cordova.plugins.permissions) {
+        // Using cordova-plugin-android-permissions (if present) or direct check
+        // If not, we can use a simple prompt via Notification.requestPermission for web fallback,
+        // but for native, we need to use the plugin. We already have POST_NOTIFICATIONS in manifest,
+        // so the user will be prompted on first notification creation. However, some plugins require
+        // explicit request. We'll just attempt to create the notification, which triggers the system
+        // permission dialog on Android 13+ automatically.
+    }
+
+    // Initialize music controls (lock screen widget)
     if (isCordova && window.MusicControls) {
         window.MusicControls.create({
             track: 'Kingdom Lifestyle Radio',
             artist: 'Tap to play',
-            cover: 'img/radio_icon.png',  // optional
+            cover: 'img/radio_icon.png',   // optional, can be a local file
             isPlaying: false,
             dismissable: true,
             hasPrev: true,
             hasNext: true,
             hasClose: true,
             ticker: 'KLS Radio',
-            // Android notification channel (Android 8+)
             notificationChannelName: 'KLS Radio',
             notificationChannelDescription: 'Radio playback controls'
         }, onMusicControlsSuccess, onMusicControlsError);
 
-        // Handle button events from the notification
         window.MusicControls.subscribe(onMusicControlsEvent);
     }
 

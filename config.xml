@@ -35,12 +35,16 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
-        <!-- Android 12+ SplashScreen API (core, no plugin needed) -->
+        <!-- Android 12+ SplashScreen API -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="AutoHideSplashScreen" value="false" />
         <preference name="SplashScreenDelay" value="0" />
         <preference name="SplashScreenBackgroundColor" value="#05081a" />
-        <preference name="SplashScreenImage" value="res/screen/android/splash.png" />
+        <!-- Use the drawable name copied via resource-file below -->
+        <preference name="SplashScreenImage" value="splash_icon" />
+
+        <!-- Copy splash image to drawable folder reliably -->
+        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/drawable/splash_icon.png" />
 
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
@@ -88,7 +92,7 @@
         </edit-config>
     </platform>
 
-    <!-- PLUGINS – no splashscreen plugin, core handles it -->
+    <!-- PLUGINS -->
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
     <plugin name="cordova-plugin-device" spec="^3.0.0" />
     <plugin name="cordova-plugin-file" spec="^6.0.2" />
