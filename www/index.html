@@ -2360,19 +2360,75 @@ const isCordova = !!window.cordova;
 document.addEventListener('deviceready', function() {
     console.log('Cordova is ready!');
     
-    // Hide the native splash screen after a short delay
-    // (Your custom loading screen will have already started or finished)
+    // Hide native splash screen after a short delay
     setTimeout(function() {
         if (navigator.splashscreen) {
             navigator.splashscreen.hide();
         }
     }, 2500);
-    
-    // Enable background mode if available (keeps app alive for audio)
+
+    // Create the lock‑screen media notification
+    if (isCordova && window.MusicControls) {
+        window.MusicControls.create({
+            track: 'Kingdom Lifestyle Radio',
+            artist: 'Tap to play',
+            cover: 'img/radio_icon.png',  // optional
+            isPlaying: false,
+            dismissable: true,
+            hasPrev: true,
+            hasNext: true,
+            hasClose: true,
+            ticker: 'KLS Radio',
+            // Android notification channel (Android 8+)
+            notificationChannelName: 'KLS Radio',
+            notificationChannelDescription: 'Radio playback controls'
+        }, onMusicControlsSuccess, onMusicControlsError);
+
+        // Handle button events from the notification
+        window.MusicControls.subscribe(onMusicControlsEvent);
+    }
+
+    // Enable background mode
     if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
         window.cordova.plugins.backgroundMode.enable();
     }
 }, false);
+
+// MusicControls callbacks
+function onMusicControlsSuccess() {
+    console.log('MusicControls created');
+}
+
+function onMusicControlsError(error) {
+    console.error('MusicControls error:', error);
+}
+
+function onMusicControlsEvent(action) {
+    const message = JSON.parse(action).message;
+    switch (message) {
+        case 'music-controls-play':
+            playRadio();
+            break;
+        case 'music-controls-pause':
+            pauseRadio();
+            break;
+        case 'music-controls-next':
+            switchChannel(1);
+            break;
+        case 'music-controls-previous':
+            switchChannel(-1);
+            break;
+        case 'music-controls-destroy':
+            stopRadio();
+            break;
+        default:
+            break;
+    }
+}
+
+
+
+
 
 // Radio stability variables
 const radioStability = {
@@ -2389,28 +2445,19 @@ const radioStability = {
     isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
 };
 
+
+
+
 // Modify your radio functions to use background audio
 function playRadio() {
     const station = appState.stations[appState.currentStation];
     clearRadioTimeouts();
 
-    // === CORDOVA: Use MediaSession for lock screen / notification ===
-    if (isCordova && window.MediaSession) {
-        window.MediaSession.setMetadata({
-            title: station.name,
-            artist: 'Kingdom Lifestyle Radio',
-            album: station.description,
-            artwork: 'img/radio_icon.png'   // optional notification icon (must exist)
-        });
-
-        window.MediaSession.setActionHandler('play', () => playRadio());
-        window.MediaSession.setActionHandler('pause', () => pauseRadio());
-        window.MediaSession.setActionHandler('stop', () => stopRadio());
-
-        window.MediaSession.setActive(true);
+    // Update lock screen notification
+    if (isCordova && window.MusicControls) {
+        window.MusicControls.updateIsPlaying(true);
     }
 
-    // === ACTUAL AUDIO PLAYBACK (works in Cordova because the service keeps the webview alive) ===
     appState.radioShouldPlay = true;
     elements.radioAudio.src = station.url;
     elements.radioAudio.load();
@@ -2420,9 +2467,6 @@ function playRadio() {
         playPromise.then(() => {
             appState.radioPlaying = true;
             elements.playPauseIcon.textContent = 'pause';
-            if (isCordova && window.MediaSession) {
-                window.MediaSession.setPlaybackState('playing');
-            }
             startStabilityMonitoring();
             radioStability.lastBufferTime = Date.now();
         }).catch(error => {
@@ -2430,70 +2474,37 @@ function playRadio() {
             handlePlaybackError();
         });
     }
-
-function attemptPlay(retryCount = 0) {
-        return new Promise((resolve, reject) => {
-            const playPromise = elements.radioAudio.play();
-            
-            if (playPromise !== undefined) {
-                playPromise
-                    .then(() => resolve())
-                    .catch(error => {
-                        if (retryCount < 3) {
-                            // Wait and retry
-                            setTimeout(() => {
-                                attemptPlay(retryCount + 1)
-                                    .then(resolve)
-                                    .catch(reject);
-                            }, 1000 * (retryCount + 1));
-                        } else {
-                            reject(error);
-                        }
-                    });
-            } else {
-                // For older browsers
-                setTimeout(() => {
-                    if (elements.radioAudio.readyState >= 2) {
-                        resolve();
-                    } else {
-                        reject(new Error('Audio not ready'));
-                    }
-                }, 1000);
-            }
-        });
-    }
 }
-
-    
 
 function pauseRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
 
+    // Update lock screen notification
+    if (isCordova && window.MusicControls) {
+        window.MusicControls.updateIsPlaying(false);
+    }
+
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
     appState.radioPlaying = false;
     elements.playPauseIcon.textContent = 'play_arrow';
-
-    if (isCordova && window.MediaSession) {
-        window.MediaSession.setPlaybackState('paused');
-    }
 }
 
 function stopRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
 
+    // Destroy the notification
+    if (isCordova && window.MusicControls) {
+        window.MusicControls.destroy();
+    }
+
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
     elements.radioAudio.currentTime = 0;
     appState.radioPlaying = false;
     elements.playPauseIcon.textContent = 'play_arrow';
-
-    if (isCordova && window.MediaSession) {
-        window.MediaSession.setPlaybackState('none');
-        window.MediaSession.setActive(false);
-    }
 }
 
 
