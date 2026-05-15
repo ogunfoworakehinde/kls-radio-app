@@ -35,7 +35,7 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
-        <!-- Android 12+ SplashScreen API -->
+        <!-- Android 12+ SplashScreen API (core, no plugin needed) -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="AutoHideSplashScreen" value="false" />
         <preference name="SplashScreenDelay" value="0" />
@@ -88,7 +88,7 @@
         </edit-config>
     </platform>
 
-    <!-- PLUGINS: Replace media-session with music-controls2 (AndroidX compatible) -->
+    <!-- PLUGINS – no splashscreen plugin, core handles it -->
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
     <plugin name="cordova-plugin-device" spec="^3.0.0" />
     <plugin name="cordova-plugin-file" spec="^6.0.2" />

@@ -12,6 +12,7 @@
     "run:android": "cordova run android"
   },
   "dependencies": {
+    "cordova-android": "^13.0.0",
     "cordova-plugin-background-mode": "^0.7.3",
     "cordova-plugin-device": "^3.0.0",
     "cordova-plugin-file": "^6.0.2",
@@ -35,8 +36,5 @@
       "cordova-plugin-powermanagement": {},
       "cordova-plugin-statusbar": {}
     }
-  },
-  "devDependencies": {
-    "cordova-android": "^13.0.0"
   }
 }
