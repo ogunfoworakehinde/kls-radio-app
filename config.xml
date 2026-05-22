@@ -15,7 +15,7 @@
     <allow-intent href="http://*/*" />
     <allow-intent href="https://*/*" />
     <allow-navigation href="*" />
-    
+
     <preference name="BackgroundColor" value="#0a0f2d" />
     <preference name="StatusBarStyle" value="lightcontent" />
     <preference name="StatusBarBackgroundColor" value="#0a0f2d" />
@@ -28,22 +28,17 @@
         <preference name="android-targetSdkVersion" value="36" />
         <preference name="android-compileSdkVersion" value="36" />
         <preference name="android-installLocation" value="auto" />
-        <preference name="android-backgroundColor" value="#0a0f2d" />
         <preference name="versionCode" value="1305" />
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
-        <!-- Android 12+ SplashScreen -->
+        <!-- Splash Screen (auto‑hide after 3 seconds) -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
-        <preference name="AutoHideSplashScreen" value="false" />
-        <preference name="SplashScreenDelay" value="0" />
+        <preference name="SplashScreenDelay" value="3000" />
         <preference name="SplashScreenBackgroundColor" value="#05081a" />
-        <!-- Use the drawable name we will copy -->
         <preference name="SplashScreenImage" value="splash_logo" />
-        <!-- Also set the animated icon (Android 12+ requires both) -->
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="splash_logo" />
 
-        <!-- Copy the 512x512 PNG directly to the drawable folder -->
         <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/drawable/splash_logo.png" />
 
         <icon density="ldpi" src="www/images/icon.png" />
@@ -53,7 +48,6 @@
         <icon density="xxhdpi" src="www/images/icon.png" />
         <icon density="xxxhdpi" src="www/images/icon.png" />
 
-        <!-- Permissions (including POST_NOTIFICATIONS for Android 13+) -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -89,7 +83,6 @@
         </edit-config>
     </platform>
 
-    <!-- PLUGINS (re-added android-permissions for notification request) -->
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
     <plugin name="cordova-plugin-device" spec="^3.0.0" />
     <plugin name="cordova-plugin-file" spec="^6.0.2" />

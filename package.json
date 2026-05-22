@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "cordova-android": "^13.0.0",
+    "cordova-plugin-android-permissions": "^1.1.5",
     "cordova-plugin-background-mode": "^0.7.3",
     "cordova-plugin-device": "^3.0.0",
     "cordova-plugin-file": "^6.0.2",
@@ -23,10 +24,9 @@
     "cordova-plugin-statusbar": "^3.0.0"
   },
   "cordova": {
-    "platforms": [
-      "android"
-    ],
+    "platforms": [],
     "plugins": {
+      "cordova-plugin-android-permissions": {},
       "cordova-plugin-background-mode": {},
       "cordova-plugin-device": {},
       "cordova-plugin-file": {},
