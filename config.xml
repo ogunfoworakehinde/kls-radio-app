@@ -39,7 +39,8 @@
         <preference name="SplashScreenImage" value="splash_logo" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="splash_logo" />
 
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/drawable/splash_logo.png" />
+        <!-- CORRECTED resource-file target -->
+        <resource-file src="www/res/screen/android/splash.png" target="res/drawable/splash_logo.png" />
 
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
