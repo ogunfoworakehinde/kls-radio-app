@@ -6,45 +6,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  debug:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Install Cordova
-        run: npm install -g cordova
+      - run: npm install -g cordova
 
-      - name: Install dependencies
-        run: npm install
+      - run: npm install
 
-      - name: Add Android platform
-        run: cordova platform add android
+      - run: cordova platform add android
 
-      - name: Copy splash image into platform
-        run: cp -r android/app/src/main/res/drawable platforms/android/app/src/main/res/
+      - run: cp -r android/app/src/main/res/drawable platforms/android/app/src/main/res/
 
-      - name: Build debug APK
-        run: cordova build android
+      - run: cordova build android
 
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: app-debug.apk
           path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Build release AAB
-        run: cordova build android --release -- --packageType=bundle
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - run: npm install -g cordova
+
+      - run: npm install
+
+      - run: cordova platform add android
+
+      - run: cp -r android/app/src/main/res/drawable platforms/android/app/src/main/res/
+
+      - run: cordova build android --release -- --packageType=bundle
         continue-on-error: true
 
-      - name: Upload release AAB
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: app-release.aab
           path: platforms/android/app/build/outputs/bundle/release/app-release.aab
