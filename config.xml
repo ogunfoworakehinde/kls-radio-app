@@ -36,13 +36,11 @@
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="SplashScreenDelay" value="3000" />
         <preference name="SplashScreenBackgroundColor" value="#05081a" />
-        <preference name="SplashScreenImage" value="splash_logo" />
-        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="splash_logo" />
+        <preference name="SplashScreenImage" value="splash" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="splash" />
 
-        <!-- Copy the splash PNG into the app module's drawable folder -->
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/drawable/splash_logo.png" />
+        <!-- NO resource-file; the image will be copied by CI -->
 
-        <!-- App launcher icon -->
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
         <icon density="hdpi" src="www/images/icon.png" />
