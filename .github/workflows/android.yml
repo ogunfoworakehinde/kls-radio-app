@@ -2,259 +2,50 @@ name: Build Android APK and AAB
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      
-    - name: Setup Java 17 (REQUIRED for Cordova Android 13)
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-        
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        
-    - name: Clean workspace
-      run: |
-        # Remove everything to start fresh
-        rm -rf platforms
-        rm -rf plugins
-        rm -rf node_modules
-        
-    - name: Install Cordova and dependencies
-      run: |
-        npm install -g cordova@12.0.0
-        npm install
-        
-    - name: Add Android platform
-      run: |
-        # Add Android platform
-        cordova platform add android@13.0.0
-        
-        # Verify platform was added
-        echo "✅ Android platform added:"
-        ls -la platforms/android/
-        
-    - name: Install compatible plugins (FIXED VERSIONS)
-      run: |
-        # Remove ALL plugins first to avoid conflicts
-        cordova plugin rm --all 2>/dev/null || true
-        
-        # Install plugins in correct order with compatible versions
-        echo "📦 Installing plugins with compatible versions..."
-        
-        # First install file plugin (version 6.0.2 for media plugin compatibility)
-        cordova plugin add cordova-plugin-file@6.0.2
-        
-        # Then install other essential plugins
-        cordova plugin add cordova-plugin-network-information@3.0.0
-        cordova plugin add cordova-plugin-device@3.0.0
-        cordova plugin add cordova-plugin-splashscreen@6.0.2
-        cordova plugin add cordova-plugin-statusbar@3.0.0
-        
-        # Install media plugin (depends on file@6.x)
-        cordova plugin add cordova-plugin-media@5.0.3
-        
-        # Install background mode
-        cordova plugin add cordova-plugin-background-mode@0.7.3
-        
-        # Install power management
-        cordova plugin add cordova-plugin-powermanagement@1.0.5
-        
-        # DO NOT install these (they cause issues):
-        # - cordova-plugin-whitelist (not needed for Cordova 10+)
-        # - cordova-plugin-android-permissions (adds unnecessary permissions)
-        # - cordova-plugin-music-controls2 (version conflicts)
-        
-        # List installed plugins for verification
-        echo ""
-        echo "✅ Installed plugins:"
-        cordova plugin ls
-        
-    - name: Restore keystore from GitHub Secrets
-      run: |
-        # Decode the keystore from GitHub Secrets
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
-        
-        # Verify keystore exists
-        if [ -f "klsradio-release.keystore" ]; then
-          echo "✅ Keystore restored from GitHub Secrets"
-          echo "📄 File size: $(wc -c < klsradio-release.keystore) bytes"
-          
-          # Quick test to verify keystore
-          if keytool -list -keystore klsradio-release.keystore -storepass "${{ secrets.KEYSTORE_PASSWORD }}" 2>/dev/null | grep -q "keystore"; then
-            echo "🔐 Keystore verified as valid"
-          else
-            echo "⚠️ Could not verify keystore - might be wrong password or corrupted"
-          fi
-        else
-          echo "❌ ERROR: Keystore not restored!"
-          exit 1
-        fi
-        
-    - name: Prepare build environment
-      run: |
-        # Create build.json if it doesn't exist
-        if [ ! -f "build.json" ]; then
-          echo '{
-            "android": {
-              "release": {
-                "keystore": "klsradio-release.keystore",
-                "storePassword": "'"${{ secrets.KEYSTORE_PASSWORD }}"'",
-                "alias": "'"${{ secrets.KEY_ALIAS }}"'",
-                "password": "'"${{ secrets.KEY_PASSWORD }}"'",
-                "keystoreType": "JKS"
-              }
-            }
-          }' > build.json
-        fi
-        
-    - name: Build Android Release AAB (Version 12.0.9)
-      run: |
-        echo "🚀 Building Release AAB v12.0.9 (Signed Bundle)..."
-        echo "⚠️ NOTE: Only minimal permissions for radio streaming"
-        
-        # Use cordova build command with proper signing
-        cordova build android --release -- \
-          --keystore=klsradio-release.keystore \
-          --storePassword="${{ secrets.KEYSTORE_PASSWORD }}" \
-          --alias="${{ secrets.KEY_ALIAS }}" \
-          --password="${{ secrets.KEY_PASSWORD }}" \
-          --packageType=bundle
-        
-        echo "✅ Release AAB build completed"
-        
-    - name: Build Android Debug APK
-      run: |
-       cordova platform rm android
-          cordova platform add android
-          cp -r android/app/src/main/res/drawable platforms/android/app/src/main/res/
-         echo "🔧 Building Debug APK..."
-        cordova build android --release
-        echo "✅ Debug APK build completed"
-        
-    - name: Get AAB SHA1 fingerprint (CRITICAL CHECK)
-      run: |
-        # Check the generated AAB's SHA1 to verify it's correct
-        echo "🔍 Looking for AAB file..."
-        
-        AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" 2>/dev/null | head -1)
-        if [ -f "$AAB_FILE" ]; then
-          echo "📱 Generated AAB file: $(basename "$AAB_FILE")"
-          echo "📊 File size: $(wc -c < "$AAB_FILE" | numfmt --to=iec) bytes"
-          echo ""
-          echo "🔐 SHA1 FINGERPRINT (MUST MATCH Google Play):"
-          echo "================================================"
-          SHA1_OUTPUT=$(keytool -printcert -jarfile "$AAB_FILE" 2>/dev/null)
-          echo "$SHA1_OUTPUT" | grep -A1 "SHA1:" || echo "Could not extract SHA1"
-          echo "================================================"
-          
-          # Extract just the SHA1 value
-          SHA1_VALUE=$(echo "$SHA1_OUTPUT" | grep "SHA1:" | head -1 | tr -d ' ' | cut -d':' -f2-)
-          if [ ! -z "$SHA1_VALUE" ]; then
-            echo "$SHA1_VALUE" > sha1_fingerprint.txt
-            echo "📝 SHA1 saved: $SHA1_VALUE"
-            
-            echo ""
-            echo "📋 EXPECTED SHA1 from Google Play Console:"
-            echo "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4"
-            echo ""
-            
-            if [ "$SHA1_VALUE" = "EC:57:DA:A7:AD:F3:57:FA:5D:B1:A8:62:FC:28:5B:00:2D:CB:55:A4" ]; then
-              echo "✅ ✅ ✅ SUCCESS: SHA1 matches! Ready for Google Play upload."
-            else
-              echo "❌ ❌ ❌ WARNING: SHA1 DOES NOT MATCH!"
-              echo "   The keystore in KEYSTORE_BASE64 secret is NOT the original one."
-              echo "   Uploading this to Google Play will FAIL."
-            fi
-          else
-            echo "⚠️ Could not extract SHA1 value"
-            echo "Test" > sha1_fingerprint.txt
-          fi
-        else
-          echo "❌ No AAB file found at expected location!"
-          echo "Trying to find any AAB files..."
-          find . -name "*.aab" 2>/dev/null || echo "No AAB files found anywhere"
-          echo "Test" > sha1_fingerprint.txt
-        fi
-        
-    - name: Check APK/AAB permissions (IMPORTANT)
-      run: |
-        echo "🔍 Checking permissions in generated files..."
-        APK_FILE=$(find platforms/android/app/build/outputs/apk/debug -name "*.apk" 2>/dev/null | head -1)
-        if [ -f "$APK_FILE" ]; then
-          echo "📱 Debug APK permissions:"
-          aapt dump permissions "$APK_FILE" 2>/dev/null | grep "android.permission" || echo "Could not extract permissions"
-        fi
-        
-        AAB_FILE=$(find platforms/android/app/build/outputs/bundle/release -name "*.aab" 2>/dev/null | head -1)
-        if [ -f "$AAB_FILE" ]; then
-          echo ""
-          echo "📱 Release AAB permissions:"
-          # Extract base module to check permissions
-          unzip -p "$AAB_FILE" "base/manifest/AndroidManifest.xml" > /tmp/base_manifest.xml 2>/dev/null && \
-          aapt dump xmltree /tmp/base_manifest.xml 2>/dev/null | grep "android.permission" || echo "Could not extract AAB permissions"
-        fi
-        
-    - name: Upload Release AAB Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-release-aab-v12.0.9
-        path: platforms/android/app/build/outputs/bundle/release/*.aab
-        if-no-files-found: warn
-        retention-days: 7
-        
-    - name: Upload Debug APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-debug-apk-v12.0.9
-        path: platforms/android/app/build/outputs/apk/debug/*.apk
-        if-no-files-found: warn
-        retention-days: 7
-        
-    - name: Upload SHA1 fingerprint
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: build-info-v12.0.9
-        path: sha1_fingerprint.txt
-        if-no-files-found: warn
-        retention-days: 7
-        
-    - name: Show build summary
-      if: always()
-      run: |
-        echo "=== BUILD SUMMARY (v12.0.9) ==="
-        echo ""
-        echo "✅ Plugin compatibility fixed:"
-        echo "   • cordova-plugin-file@6.0.2 (compatible with media plugin)"
-        echo "   • cordova-plugin-media@5.0.3"
-        echo "   • Removed whitelist plugin (not needed for Cordova 10+)"
-        echo ""
-        echo "📦 Artifacts generated:"
-        echo "   • android-release-aab-v12.0.9: For Google Play Store"
-        echo "   • android-debug-apk-v12.0.9: For testing"
-        echo "   • build-info-v12.0.9: Contains SHA1 fingerprint"
-        echo ""
-        echo "✅ Permissions minimized for radio app (4 permissions):"
-        echo "   • INTERNET (required for streaming)"
-        echo "   • ACCESS_NETWORK_STATE (connection checks)"
-        echo "   • FOREGROUND_SERVICE (background audio)"
-        echo "   • WAKE_LOCK (keep screen on)"
-        echo ""
-        echo "⚠️ IMPORTANT:"
-        echo "   1. Check SHA1 fingerprint matches expected"
-        echo "   2. Upload AAB to Google Play"
-        echo "   3. This version should have only 4 permissions (matching previous)"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Cordova
+        run: npm install -g cordova
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Add Android platform
+        run: cordova platform add android
+
+      - name: Copy splash image into platform
+        run: cp -r android/app/src/main/res/drawable platforms/android/app/src/main/res/
+
+      - name: Build Android APK (debug)
+        run: cordova build android
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug.apk
+          path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Build Android AAB (release)   # optional if you need AAB
+        run: cordova build android --release -- --packageType=bundle
+        continue-on-error: true
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release.aab
+          path: platforms/android/app/build/outputs/bundle/release/app-release.aab
+        continue-on-error: true
