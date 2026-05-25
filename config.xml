@@ -39,8 +39,7 @@
         <preference name="SplashScreenImage" value="splash" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="splash" />
 
-        <!-- NO resource-file; the image will be copied by CI -->
-
+        <!-- App launcher icon -->
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
         <icon density="hdpi" src="www/images/icon.png" />

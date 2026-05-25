@@ -30,20 +30,20 @@ jobs:
       - name: Copy splash image into platform
         run: cp -r android/app/src/main/res/drawable platforms/android/app/src/main/res/
 
-      - name: Build Android APK (debug)
+      - name: Build debug APK
         run: cordova build android
 
-      - name: Upload APK
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug.apk
           path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
 
-      - name: Build Android AAB (release)   # optional if you need AAB
+      - name: Build release AAB
         run: cordova build android --release -- --packageType=bundle
         continue-on-error: true
 
-      - name: Upload AAB
+      - name: Upload release AAB
         uses: actions/upload-artifact@v4
         with:
           name: app-release.aab
