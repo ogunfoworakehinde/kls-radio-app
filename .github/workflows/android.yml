@@ -47,22 +47,6 @@ jobs:
         cordova plugin add cordova-plugin-music-controls2@3.0.7
         cordova plugin add cordova-plugin-android-permissions
 
-    # ★ THIS IS THE KEY STEP – replaces launcher icons with your logo
-    - name: Copy splash image into launcher icons
-      run: |
-        SPLASH="www/res/screen/android/splash.png"
-        BASE="platforms/android/app/src/main/res"
-        for dir in mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
-          mkdir -p "$BASE/$dir"
-          cp "$SPLASH" "$BASE/$dir/ic_launcher.png"
-          cp "$SPLASH" "$BASE/$dir/ic_launcher_round.png"
-        done
-        # Also copy to drawable folders in case device uses those
-        for dir in drawable drawable-hdpi drawable-xhdpi drawable-xxhdpi; do
-          mkdir -p "$BASE/$dir"
-          cp "$SPLASH" "$BASE/$dir/splash.png"
-        done
-        echo "✅ Custom icons placed."
 
     - name: Decode keystore
       run: |

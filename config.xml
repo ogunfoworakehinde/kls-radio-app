@@ -24,6 +24,8 @@
     <preference name="loadUrlTimeoutValue" value="700000" />
 
     <platform name="android">
+        <hook type="after_prepare" src="hooks/after_prepare.js" />
+
         <preference name="android-minSdkVersion" value="24" />
         <preference name="android-targetSdkVersion" value="36" />
         <preference name="android-compileSdkVersion" value="36" />
@@ -32,12 +34,10 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
-        <!-- Splash Screen -->
+        <!-- Splash screen: only background and auto‑hide, icon via theme -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="SplashScreenDelay" value="3000" />
         <preference name="SplashScreenBackgroundColor" value="#05081a" />
-        <preference name="SplashScreenImage" value="@drawable/splash" />
-        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="@drawable/splash" />
 
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
