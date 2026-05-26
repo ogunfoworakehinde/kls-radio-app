@@ -3,55 +3,71 @@ name: Build Android APK and AAB
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
-  debug:
+  build:
     runs-on: ubuntu-latest
+
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
     steps:
-      - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
 
-      - run: npm install -g cordova
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
 
-      - run: npm install
+    - name: Install Cordova and dependencies
+      run: |
+        npm install -g cordova@12.0.0
+        npm install
 
-      - run: cordova platform add android
+    - name: Remove old Android platform
+      run: cordova platform rm android --nosave || true
 
-      - run: cp -r android/app/src/main/res/drawable platforms/android/app/src/main/res/
+    - name: Add Android platform
+      run: cordova platform add android@13.0.0 --save
 
-      - run: cordova build android
+    - name: Ensure required plugins
+      run: |
+        cordova plugin add cordova-plugin-network-information
+        cordova plugin add cordova-plugin-statusbar
+        cordova plugin add cordova-plugin-media@5.0.3
+        cordova plugin add cordova-plugin-background-mode
+        cordova plugin add cordova-plugin-music-controls2@3.0.7
+        cordova plugin add cordova-plugin-android-permissions
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app-debug.apk
-          path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+    - name: Copy splash image into platform
+      run: cp -r assets/android/res/drawable platforms/android/app/src/main/res/
 
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    - name: Decode keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
+    - name: Build Android AAB (Release)
+      run: cordova build android --release -- --packageType=bundle --buildConfig build.json
 
-      - run: npm install -g cordova
+    - name: Build Android APK (Debug)
+      run: cordova build android --debug
 
-      - run: npm install
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: kls-radio-release-aab
+        path: platforms/android/app/build/outputs/bundle/release/*.aab
 
-      - run: cordova platform add android
-
-      - run: cp -r android/app/src/main/res/drawable platforms/android/app/src/main/res/
-
-      - run: cordova build android --release -- --packageType=bundle
-        continue-on-error: true
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: app-release.aab
-          path: platforms/android/app/build/outputs/bundle/release/app-release.aab
-        continue-on-error: true
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: kls-radio-debug-apk
+        path: platforms/android/app/build/outputs/apk/debug/*.apk
