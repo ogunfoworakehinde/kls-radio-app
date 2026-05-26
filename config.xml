@@ -32,24 +32,19 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
-        <!-- Splash background color (launcher icon is the splash icon) -->
+        <!-- Splash Screen background and auto‑hide -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="SplashScreenDelay" value="3000" />
         <preference name="SplashScreenBackgroundColor" value="#05081a" />
 
-        <!-- Replace default launcher icons with your logo -->
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-mdpi/ic_launcher.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-mdpi/ic_launcher_round.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-hdpi/ic_launcher.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-hdpi/ic_launcher_round.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-xhdpi/ic_launcher.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-xhdpi/ic_launcher_round.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-xxhdpi/ic_launcher.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-xxxhdpi/ic_launcher.png" />
-        <resource-file src="www/res/screen/android/splash.png" target="app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png" />
+        <!-- Default icon (fallback) -->
+        <icon density="ldpi" src="www/images/icon.png" />
+        <icon density="mdpi" src="www/images/icon.png" />
+        <icon density="hdpi" src="www/images/icon.png" />
+        <icon density="xhdpi" src="www/images/icon.png" />
+        <icon density="xxhdpi" src="www/images/icon.png" />
+        <icon density="xxxhdpi" src="www/images/icon.png" />
 
-        <!-- Standard icon tags removed as resource-file replaces them -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
