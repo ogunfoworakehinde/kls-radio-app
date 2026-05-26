@@ -2036,102 +2036,97 @@
     <audio id="radioAudio" crossorigin="anonymous"></audio>
 
     <!-- Scripts -->
-    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
     <script>
-    // ========== CORDOVA & GLOBAL SETUP ==========
     const isCordova = !!window.cordova;
 
-    // Wait for Cordova to load
+    // ========== CORDOVA READY ==========
     document.addEventListener('deviceready', function() {
         console.log('Cordova is ready!');
 
-        // 1. Request notification permission on Android 13+
-        if (isCordova && window.cordova.plugins && window.cordova.plugins.permissions) {
-            var permissions = cordova.plugins.permissions;
-            permissions.requestPermission(
-                permissions.POST_NOTIFICATIONS,
-                function(status) {
-                    console.log('POST_NOTIFICATIONS status: ' + status.hasPermission);
-                    initMusicControls();
-                },
-                function(error) {
-                    console.error('Permission request error: ' + error);
-                    initMusicControls();
-                }
-            );
-        } else {
-            initMusicControls();
+        // 1. Request notification permission (Android 13+)
+        function requestNotificationPermission() {
+            if (isCordova && window.cordova.plugins && window.cordova.plugins.permissions) {
+                var permissions = cordova.plugins.permissions;
+                permissions.requestPermission(
+                    permissions.POST_NOTIFICATIONS,
+                    function(status) {
+                        console.log('Notification permission: ' + status.hasPermission);
+                        if (status.hasPermission) {
+                            initMediaSession();
+                        } else {
+                            console.warn('Notification permission denied. Lock-screen controls may not work.');
+                        }
+                    },
+                    function(error) {
+                        console.error('Permission request error: ' + error);
+                        // Fallback: try to initialise anyway
+                        initMediaSession();
+                    }
+                );
+            } else {
+                // No permission plugin, just initialise
+                initMediaSession();
+            }
         }
+        requestNotificationPermission();
 
         // 2. Enable background mode
         if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
-            window.cordova.plugins.backgroundMode.enable();
+            cordova.plugins.backgroundMode.enable();
         }
     }, false);
 
-    // ========== MUSIC CONTROLS (LOCK SCREEN) ==========
-    function initMusicControls() {
-        if (isCordova && window.MusicControls) {
-            window.MusicControls.create({
-                track: 'Kingdom Lifestyle Radio',
-                artist: 'Tap to play',
-                cover: 'img/radio_icon.png',
-                isPlaying: false,
-                dismissable: true,
-                hasPrev: true,
-                hasNext: true,
-                hasClose: true,
-                ticker: 'KLS Radio',
-                notificationChannelName: 'KLS Radio',
-                notificationChannelDescription: 'Radio playback controls'
-            }, onMusicControlsSuccess, onMusicControlsError);
-
-            window.MusicControls.subscribe(onMusicControlsEvent);
+    // ========== MEDIA SESSION (LOCK SCREEN) ==========
+    function initMediaSession() {
+        if (!isCordova || !window.MediaSession) {
+            console.log('MediaSession plugin not available');
+            return;
         }
+
+        // Set initial metadata (will be updated later)
+        window.MediaSession.setMetadata({
+            title: 'Kingdom Lifestyle Radio',
+            artist: 'Live Stream',
+            album: 'KLS Radio',
+            artwork: 'img/radio_icon.png'   // optional, can be local path
+        });
+
+        // Define action handlers
+        window.MediaSession.setActionHandler('play', function() {
+            playRadio();
+        });
+        window.MediaSession.setActionHandler('pause', function() {
+            pauseRadio();
+        });
+        window.MediaSession.setActionHandler('stop', function() {
+            stopRadio();
+        });
+        window.MediaSession.setActionHandler('previoustrack', function() {
+            switchChannel(-1);
+        });
+        window.MediaSession.setActionHandler('nexttrack', function() {
+            switchChannel(1);
+        });
+
+        console.log('MediaSession initialised');
     }
 
-    function onMusicControlsSuccess() {
-        console.log('MusicControls created successfully');
-    }
-
-    function onMusicControlsError(error) {
-        console.error('MusicControls creation error:', error);
-    }
-
-    function onMusicControlsEvent(action) {
-        var message = JSON.parse(action).message;
-        switch (message) {
-            case 'music-controls-play':   playRadio(); break;
-            case 'music-controls-pause':  pauseRadio(); break;
-            case 'music-controls-next':   switchChannel(1); break;
-            case 'music-controls-previous': switchChannel(-1); break;
-            case 'music-controls-destroy': stopRadio(); break;
-        }
-    }
-
-    // ========== RADIO FUNCTIONS (with MusicControls sync) ==========
-    const radioStability = {
-        reconnectAttempts: 0,
-        maxReconnectAttempts: 5,
-        reconnectDelay: 2000,
-        isBackgroundMode: false,
-        wasPlayingBeforeMinimize: false,
-        connectionCheckInterval: null,
-        lastBufferTime: 0,
-        bufferTimeout: null,
-        playAttemptTimeout: null,
-        audioContext: null,
-        isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-    };
-
+    // ========== RADIO FUNCTIONS (updated) ==========
     function playRadio() {
         const station = appState.stations[appState.currentStation];
         clearRadioTimeouts();
 
-        // Update lock screen notification
-        if (isCordova && window.MusicControls) {
-            window.MusicControls.updateIsPlaying(true);
+        // Update MediaSession
+        if (isCordova && window.MediaSession) {
+            window.MediaSession.setMetadata({
+                title: station.name,
+                artist: station.description,
+                album: 'KLS Radio',
+                artwork: 'img/radio_icon.png'
+            });
+            window.MediaSession.setPlaybackState('playing');
         }
 
         appState.radioShouldPlay = true;
@@ -2156,9 +2151,8 @@
         clearRadioTimeouts();
         stopStabilityMonitoring();
 
-        // Update lock screen notification
-        if (isCordova && window.MusicControls) {
-            window.MusicControls.updateIsPlaying(false);
+        if (isCordova && window.MediaSession) {
+            window.MediaSession.setPlaybackState('paused');
         }
 
         appState.radioShouldPlay = false;
@@ -2171,9 +2165,8 @@
         clearRadioTimeouts();
         stopStabilityMonitoring();
 
-        // Destroy the notification
-        if (isCordova && window.MusicControls) {
-            window.MusicControls.destroy();
+        if (isCordova && window.MediaSession) {
+            window.MediaSession.setPlaybackState('none');
         }
 
         appState.radioShouldPlay = false;
@@ -2182,6 +2175,10 @@
         appState.radioPlaying = false;
         elements.playPauseIcon.textContent = 'play_arrow';
     }
+    
+
+
+
 
     // Enhanced stability functions
     function startStabilityMonitoring() {

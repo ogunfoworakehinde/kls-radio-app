@@ -18,7 +18,7 @@
     "cordova-plugin-device": "^3.0.0",
     "cordova-plugin-file": "^6.0.2",
     "cordova-plugin-media": "^5.0.3",
-    "cordova-plugin-music-controls2": "^3.0.7",
+    "cordova-plugin-media-session": "^1.0.8",
     "cordova-plugin-network-information": "^3.0.0",
     "cordova-plugin-powermanagement": "^1.0.5",
     "cordova-plugin-statusbar": "^3.0.0"
@@ -31,7 +31,7 @@
       "cordova-plugin-device": {},
       "cordova-plugin-file": {},
       "cordova-plugin-media": {},
-      "cordova-plugin-music-controls2": {},
+      "cordova-plugin-media-session": {},
       "cordova-plugin-network-information": {},
       "cordova-plugin-powermanagement": {},
       "cordova-plugin-statusbar": {}

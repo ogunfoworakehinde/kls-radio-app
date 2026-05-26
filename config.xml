@@ -32,13 +32,12 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
-        <!-- ✅ THE ONLY SPLASH PREFERENCES YOU NEED -->
+        <!-- Splash Screen (white background with your custom icon) -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="www/res/screen/android/splash.png" />
-        <preference name="SplashScreenBackgroundColor" value="#fff" />
+        <preference name="SplashScreenBackgroundColor" value="#ffffff" />
         <preference name="SplashScreenDelay" value="3000" />
 
-        <!-- Launcher icons -->
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
         <icon density="hdpi" src="www/images/icon.png" />
@@ -81,11 +80,12 @@
         </edit-config>
     </platform>
 
+    <!-- UPDATED PLUGINS: replaced music-controls2 with media-session -->
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
     <plugin name="cordova-plugin-device" spec="^3.0.0" />
     <plugin name="cordova-plugin-file" spec="^6.0.2" />
     <plugin name="cordova-plugin-media" spec="^5.0.3" />
-    <plugin name="cordova-plugin-music-controls2" spec="^3.0.7" />
+    <plugin name="cordova-plugin-media-session" spec="^1.0.8" />
     <plugin name="cordova-plugin-network-information" spec="^3.0.0" />
     <plugin name="cordova-plugin-powermanagement" spec="^1.0.5" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
