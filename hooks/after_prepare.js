@@ -13,13 +13,23 @@ module.exports = function(context) {
     }
 
     const baseDest = path.join(context.opts.projectRoot, 'platforms', 'android', 'app', 'src', 'main', 'res');
-    const subdirs = ['drawable', 'drawable-hdpi', 'drawable-xhdpi', 'drawable-xxhdpi'];
-
-    subdirs.forEach(sub => {
-        const destDir = path.join(baseDest, sub);
+    
+    // Copy to all mipmap folders as launcher icon (this changes the app icon and splash icon)
+    const mipmaps = ['mipmap-hdpi', 'mipmap-xhdpi', 'mipmap-xxhdpi', 'mipmap-xxxhdpi'];
+    mipmaps.forEach(dir => {
+        const destDir = path.join(baseDest, dir);
         fs.mkdirSync(destDir, { recursive: true });
-        const dest = path.join(destDir, 'splash.png');
-        fs.copyFileSync(src, dest);
-        console.log('✅ Copied splash to ' + dest);
+        fs.copyFileSync(src, path.join(destDir, 'ic_launcher.png'));
+        fs.copyFileSync(src, path.join(destDir, 'ic_launcher_round.png'));
+        console.log('✅ Copied to ' + destDir);
     });
+    
+    // Also copy to drawable folders as a fallback
+    const drawables = ['drawable', 'drawable-hdpi', 'drawable-xhdpi', 'drawable-xxhdpi'];
+    drawables.forEach(dir => {
+        const destDir = path.join(baseDest, dir);
+        fs.mkdirSync(destDir, { recursive: true });
+        fs.copyFileSync(src, path.join(destDir, 'splash.png'));
+    });
+    console.log('✅ Custom launcher icons and splash drawables applied');
 };
