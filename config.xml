@@ -32,12 +32,13 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
-        <!-- Splash Screen background and auto‑hide -->
+        <!-- Splash Screen -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="SplashScreenDelay" value="3000" />
         <preference name="SplashScreenBackgroundColor" value="#05081a" />
+        <preference name="SplashScreenImage" value="@drawable/splash" />
+        <preference name="AndroidWindowSplashScreenAnimatedIcon" value="@drawable/splash" />
 
-        <!-- Default icon (fallback) -->
         <icon density="ldpi" src="www/images/icon.png" />
         <icon density="mdpi" src="www/images/icon.png" />
         <icon density="hdpi" src="www/images/icon.png" />
