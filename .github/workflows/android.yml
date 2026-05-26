@@ -47,8 +47,6 @@ jobs:
         cordova plugin add cordova-plugin-music-controls2@3.0.7
         cordova plugin add cordova-plugin-android-permissions
 
-    - name: Copy splash image into platform
-      run: cp -r assets/android/res/drawable platforms/android/app/src/main/res/
 
     - name: Decode keystore
       run: |
