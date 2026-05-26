@@ -7,18 +7,19 @@ module.exports = function(context) {
     if (!platforms.includes('android')) return;
 
     const src = path.join(context.opts.projectRoot, 'assets', 'android', 'res', 'drawable', 'splash.png');
-    const destDir = path.join(context.opts.projectRoot, 'platforms', 'android', 'app', 'src', 'main', 'res', 'drawable');
-
     if (!fs.existsSync(src)) {
-        console.warn('Splash image not found at ' + src);
+        console.warn('❌ Splash image not found at ' + src);
         return;
     }
 
-    if (!fs.existsSync(destDir)) {
-        fs.mkdirSync(destDir, { recursive: true });
-    }
+    const baseDest = path.join(context.opts.projectRoot, 'platforms', 'android', 'app', 'src', 'main', 'res');
+    const subdirs = ['drawable', 'drawable-hdpi', 'drawable-xhdpi', 'drawable-xxhdpi'];
 
-    const dest = path.join(destDir, 'splash.png');
-    fs.copyFileSync(src, dest);
-    console.log('✅ Splash image copied to ' + dest);
+    subdirs.forEach(sub => {
+        const destDir = path.join(baseDest, sub);
+        fs.mkdirSync(destDir, { recursive: true });
+        const dest = path.join(destDir, 'splash.png');
+        fs.copyFileSync(src, dest);
+        console.log('✅ Copied splash to ' + dest);
+    });
 };
