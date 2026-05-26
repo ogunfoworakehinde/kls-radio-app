@@ -2041,59 +2041,93 @@
 <script>
 const isCordova = !!window.cordova;
 
-// ========== WEB MEDIA SESSION API (Lock Screen Metadata & Media Keys) ==========
-function initMediaSession() {
-    if (!('mediaSession' in navigator)) {
-        console.log('Media Session API not available');
+// ========== DEBOUNCE / DOUBLE‑CLICK GUARD ==========
+let radioTransitioning = false;
+let transitionTimeout = null;
+
+function safePlayPauseToggle() {
+    // Ignore if already transitioning
+    if (radioTransitioning) return;
+    radioTransitioning = true;
+    
+    // Clear any previous timeout
+    if (transitionTimeout) clearTimeout(transitionTimeout);
+    
+    // Perform the actual toggle immediately
+    if (appState.radioPlaying) {
+        appState.radioShouldPlay = false;
+        pauseRadio();
+    } else {
+        appState.radioShouldPlay = true;
+        playRadio();
+    }
+    
+    // Allow toggles again after a short delay (prevents rapid double‑clicks)
+    transitionTimeout = setTimeout(() => {
+        radioTransitioning = false;
+    }, 500);
+}
+
+// ========== CUSTOM MEDIA CONTROLS (Foreground Service Notification) ==========
+function initMediaControls() {
+    if (!isCordova || typeof KLSMediaControls === 'undefined') {
+        console.log('Custom media controls plugin not available');
         return;
     }
 
-    // Set initial metadata
-    navigator.mediaSession.metadata = new MediaMetadata({
-        title: 'Kingdom Lifestyle Radio',
-        artist: 'Tap to play',
-        album: 'KLS Radio',
-        artwork: [{ src: 'img/radio_icon.png', sizes: '512x512', type: 'image/png' }]
+    // Start the foreground service with initial metadata
+    KLSMediaControls.startService('Kingdom Lifestyle Radio', 'Tap to play', false, 
+        function() { console.log('Foreground service started'); },
+        function(err) { console.error('Failed to start service:', err); }
+    );
+
+    // Listen for button events from the notification
+    KLSMediaControls.listen(function(event) {
+        switch(event) {
+            case 'play':    playRadio(); break;
+            case 'pause':   pauseRadio(); break;
+            case 'stop':    stopRadio(); break;
+            case 'next':    switchChannel(1); break;
+            case 'previous': switchChannel(-1); break;
+        }
     });
 
-    // Handle media key events (play/pause/stop/next/previous)
-    navigator.mediaSession.setActionHandler('play', function() { playRadio(); });
-    navigator.mediaSession.setActionHandler('pause', function() { pauseRadio(); });
-    navigator.mediaSession.setActionHandler('stop', function() { stopRadio(); });
-    navigator.mediaSession.setActionHandler('previoustrack', function() { switchChannel(-1); });
-    navigator.mediaSession.setActionHandler('nexttrack', function() { switchChannel(1); });
-
-    console.log('Web Media Session API initialized');
+    console.log('Custom media controls initialized');
 }
 
-// Update metadata and playback state when radio plays
-function updateMediaSession(station) {
-    if (!('mediaSession' in navigator)) return;
-    navigator.mediaSession.metadata = new MediaMetadata({
-        title: station.name,
-        artist: station.description,
-        album: 'KLS Radio',
-        artwork: [{ src: 'img/radio_icon.png', sizes: '512x512', type: 'image/png' }]
-    });
-    navigator.mediaSession.playbackState = 'playing';
-}
-
-function clearMediaSession() {
-    if (!('mediaSession' in navigator)) return;
-    navigator.mediaSession.playbackState = 'none';
+// Update the play/pause button in the notification
+function updateMediaPlayPause(isPlaying) {
+    if (isCordova && typeof KLSMediaControls !== 'undefined') {
+        KLSMediaControls.updatePlayPause(isPlaying);
+    }
 }
 
 // ========== CORDOVA READY ==========
 document.addEventListener('deviceready', function() {
     console.log('Cordova is ready!');
 
-    // Enable background mode to keep audio alive
+    // 1. Request notification permission (Android 13+)
+    if (isCordova && window.cordova.plugins && window.cordova.plugins.permissions) {
+        var permissions = cordova.plugins.permissions;
+        permissions.requestPermission(
+            permissions.POST_NOTIFICATIONS,
+            function(status) {
+                console.log('Notification permission: ' + status.hasPermission);
+                // Permission granted/denied – we'll still try to start the service
+            },
+            function(error) {
+                console.error('Permission request error: ' + error);
+            }
+        );
+    }
+
+    // 2. Enable background mode (keeps WebView alive)
     if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
         cordova.plugins.backgroundMode.enable();
     }
 }, false);
 
-// ========== RADIO FUNCTIONS (with Web Media Session sync) ==========
+// ========== RADIO FUNCTIONS (with debounce + notification sync) ==========
 const radioStability = {
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
@@ -2112,8 +2146,8 @@ function playRadio() {
     const station = appState.stations[appState.currentStation];
     clearRadioTimeouts();
 
-    // Update Web Media Session (lock screen metadata & media keys)
-    updateMediaSession(station);
+    // Update notification immediately
+    updateMediaPlayPause(true);
 
     appState.radioShouldPlay = true;
     elements.radioAudio.src = station.url;
@@ -2136,7 +2170,9 @@ function playRadio() {
 function pauseRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
-    clearMediaSession();
+
+    // Update notification immediately
+    updateMediaPlayPause(false);
 
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
@@ -2147,7 +2183,11 @@ function pauseRadio() {
 function stopRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
-    clearMediaSession();
+
+    // Stop the foreground service (removes notification)
+    if (isCordova && typeof KLSMediaControls !== 'undefined') {
+        KLSMediaControls.stopService();
+    }
 
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
@@ -2156,12 +2196,15 @@ function stopRadio() {
     elements.playPauseIcon.textContent = 'play_arrow';
 }
 
-// Global switchChannel (used by media session and UI)
+// Global switchChannel (used by notification buttons and UI)
 function switchChannel(direction) {
     appState.currentStation = (appState.currentStation + direction + appState.stations.length) % appState.stations.length;
     updateRadioDisplay();
     updateChannelSwitcher();
-    if (appState.radioPlaying) playRadio();
+    if (appState.radioPlaying) {
+        // If already playing, restart with new station
+        playRadio();
+    }
 }
 
 // ========== STABILITY & RECONNECT (unchanged) ==========
@@ -2510,7 +2553,8 @@ function initMainApp() {
         updateRadioDisplay();
         elements.radioAudio.volume = appState.settings.radioVolume;
         elements.radioAudio.crossOrigin = 'anonymous';
-        elements.playPauseBtn.addEventListener('click', toggleRadioPlay);
+        // Use debounced toggle
+        elements.playPauseBtn.addEventListener('click', safePlayPauseToggle);
         elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
         elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
         elements.channelMenuBtn.addEventListener('click', toggleChannelSwitcher);
@@ -2542,11 +2586,6 @@ function initMainApp() {
         elements.currentStation.textContent = station.name;
         elements.currentChannel.textContent = station.description;
         elements.radioAudio.src = station.url;
-    }
-
-    function toggleRadioPlay() {
-        if (appState.radioPlaying) { appState.radioShouldPlay = false; pauseRadio(); }
-        else { appState.radioShouldPlay = true; playRadio(); }
     }
 
     function toggleChannelSwitcher() { elements.channelSwitcher.classList.toggle('active'); }
@@ -2965,7 +3004,10 @@ function initMainApp() {
     window.playRadio = playRadio; window.pauseRadio = pauseRadio; window.stopRadio = stopRadio;
 
     setupEventListeners();
-    initMediaSession();   // Initialize Web Media Session API (lock screen metadata & media keys)
+    
+    // Initialize the custom foreground‑service widget (replaces Web Media Session)
+    initMediaControls();
+    
     if (appState.currentPage === 'blog') loadHeroSlider();
 }
 

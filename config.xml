@@ -80,7 +80,7 @@
         </edit-config>
     </platform>
 
-    <!-- Only plugins that are necessary (no music-controls) -->
+    <!-- Standard plugins -->
     <plugin name="cordova-plugin-background-mode" spec="^0.7.3" />
     <plugin name="cordova-plugin-device" spec="^3.0.0" />
     <plugin name="cordova-plugin-file" spec="^6.0.2" />
@@ -89,4 +89,7 @@
     <plugin name="cordova-plugin-powermanagement" spec="^1.0.5" />
     <plugin name="cordova-plugin-statusbar" spec="^3.0.0" />
     <plugin name="cordova-plugin-android-permissions" spec="^1.1.5" />
+
+    <!-- Custom media controls plugin (local) -->
+    <plugin name="kls-media-controls" spec="./custom-plugins/kls-media-controls" />
 </widget>

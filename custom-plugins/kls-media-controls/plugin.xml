@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
+        id="kls-media-controls"
+        version="1.0.0">
+    <name>KLS Media Controls</name>
+    <description>Foreground service media notification for KLS Radio</description>
+    <js-module src="www/KLSMediaControls.js" name="KLSMediaControls">
+        <clobbers target="KLSMediaControls" />
+    </js-module>
+    <platform name="android">
+        <config-file target="AndroidManifest.xml" parent="/manifest/application">
+            <service android:name="com.kingdomlifestyleradio.klsradio.KLSMediaService"
+                     android:foregroundServiceType="mediaPlayback"
+                     android:exported="false" />
+        </config-file>
+        <source-file src="src/android/KLSMediaService.java"
+                     target-dir="src/main/java/com/kingdomlifestyleradio/klsradio" />
+        <source-file src="src/android/KLSMediaControlsPlugin.java"
+                     target-dir="src/main/java/com/kingdomlifestyleradio/klsradio" />
+    </platform>
+</plugin>
