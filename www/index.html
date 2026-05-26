@@ -2036,7 +2036,7 @@
     <audio id="radioAudio" crossorigin="anonymous"></audio>
 
     <!-- Scripts -->
- <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
 <script>
 const isCordova = !!window.cordova;
@@ -2052,6 +2052,7 @@ document.addEventListener('deviceready', function() {
             permissions.POST_NOTIFICATIONS,
             function(status) {
                 console.log('Notification permission: ' + status.hasPermission);
+                // We'll initialise the media session after the app UI is ready
             },
             function(error) {
                 console.error('Permission request error: ' + error);
@@ -2065,30 +2066,50 @@ document.addEventListener('deviceready', function() {
     }
 }, false);
 
-// ========== MEDIA SESSION (LOCK SCREEN) ==========
+// ========== MEDIA SESSION (LOCK SCREEN) – CORRECT API ==========
 function initMediaSession() {
-    if (!isCordova || !window.MediaSession) {
+    if (!isCordova || typeof mediaSession === 'undefined') {
         console.log('MediaSession plugin not available');
         return;
     }
 
-    window.MediaSession.setMetadata({
-        title: 'Kingdom Lifestyle Radio',
+    // Create the media notification widget
+    mediaSession.create({
+        track: 'Kingdom Lifestyle Radio',
         artist: 'Tap to play',
         album: 'KLS Radio',
-        artwork: 'img/radio_icon.png'
+        cover: 'img/radio_icon.png',   // local image in www/
+        isPlaying: false,
+        dismissable: true,
+        hasPrev: true,
+        hasNext: true,
+        hasClose: true,
+        ticker: 'KLS Radio'
+    }, function() {
+        console.log('MediaSession created successfully');
+    }, function(error) {
+        console.error('MediaSession creation error:', error);
     });
 
-    window.MediaSession.setActionHandler('play', function() { playRadio(); });
-    window.MediaSession.setActionHandler('pause', function() { pauseRadio(); });
-    window.MediaSession.setActionHandler('stop', function() { stopRadio(); });
-    window.MediaSession.setActionHandler('previoustrack', function() { switchChannel(-1); });
-    window.MediaSession.setActionHandler('nexttrack', function() { switchChannel(1); });
+    // Subscribe to button events
+    mediaSession.subscribe(function(action) {
+        var message = JSON.parse(action).message;
+        switch (message) {
+            case 'music-controls-play':   playRadio(); break;
+            case 'music-controls-pause':  pauseRadio(); break;
+            case 'music-controls-next':   switchChannel(1); break;
+            case 'music-controls-previous': switchChannel(-1); break;
+            case 'music-controls-destroy': stopRadio(); break;
+        }
+    });
+
+    // Start listening for events
+    mediaSession.listen();
 
     console.log('MediaSession initialised');
 }
 
-// ========== RADIO FUNCTIONS (with MediaSession sync) ==========
+// ========== RADIO FUNCTIONS (with mediaSession sync) ==========
 const radioStability = {
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
@@ -2107,14 +2128,9 @@ function playRadio() {
     const station = appState.stations[appState.currentStation];
     clearRadioTimeouts();
 
-    if (isCordova && window.MediaSession) {
-        window.MediaSession.setMetadata({
-            title: station.name,
-            artist: station.description,
-            album: 'KLS Radio',
-            artwork: 'img/radio_icon.png'
-        });
-        window.MediaSession.setPlaybackState('playing');
+    // Update the media session widget
+    if (isCordova && typeof mediaSession !== 'undefined') {
+        mediaSession.updateIsPlaying(true);
     }
 
     appState.radioShouldPlay = true;
@@ -2139,8 +2155,8 @@ function pauseRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
 
-    if (isCordova && window.MediaSession) {
-        window.MediaSession.setPlaybackState('paused');
+    if (isCordova && typeof mediaSession !== 'undefined') {
+        mediaSession.updateIsPlaying(false);
     }
 
     appState.radioShouldPlay = false;
@@ -2153,8 +2169,8 @@ function stopRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
 
-    if (isCordova && window.MediaSession) {
-        window.MediaSession.setPlaybackState('none');
+    if (isCordova && typeof mediaSession !== 'undefined') {
+        mediaSession.destroy();
     }
 
     appState.radioShouldPlay = false;
@@ -2164,7 +2180,7 @@ function stopRadio() {
     elements.playPauseIcon.textContent = 'play_arrow';
 }
 
-// Global switchChannel (used by MediaSession and UI)
+// Global switchChannel (used by media session and UI)
 function switchChannel(direction) {
     appState.currentStation = (appState.currentStation + direction + appState.stations.length) % appState.stations.length;
     updateRadioDisplay();
