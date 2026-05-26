@@ -293,7 +293,6 @@
 
         /* Material Design Variables - DEEPER BLUE THEME */
         :root {
-            /* Deep Blue Theme - Default */
             --mdc-primary: #0a0f2d;
             --mdc-primary-dark: #05081a;
             --mdc-primary-light: #1a235c;
@@ -311,7 +310,6 @@
             --mdc-success: #28a745;
             --mdc-warning: #ffc107;
             
-            /* Text Colors with High Contrast */
             --mdc-on-primary: #ffffff;
             --mdc-on-secondary: #0a0f2d;
             --mdc-on-surface: #0a0f2d;
@@ -343,7 +341,6 @@
             --safe-area-bottom: env(safe-area-inset-bottom);
         }
 
-        /* Theme Variables - Only 3 Themes: Deep Blue (Default), Dark  */
         .theme-deep-blue {
             --mdc-primary: #0a0f2d;
             --mdc-primary-dark: #05081a;
@@ -382,7 +379,6 @@
             --mdc-pagination-text: #ffffff;
         }
 
-        /* Reset & Base */
         * {
             margin: 0;
             padding: 0;
@@ -406,8 +402,6 @@
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-     
-        /* Typography with High Contrast */
         h1, h2, h3, h4, h5, h6 {
             font-family: var(--mdc-font-family-heading);
             font-weight: 600;
@@ -416,40 +410,16 @@
             color: var(--mdc-on-surface);
         }
 
-        h1 { 
-            font-size: 1.75rem; 
-            color: var(--mdc-on-surface);
-        }
-        h2 { 
-            font-size: 1.5rem; 
-            color: var(--mdc-on-surface);
-        }
-        h3 { 
-            font-size: 1.25rem; 
-            color: var(--mdc-on-surface);
-        }
-        h4 { 
-            font-size: 1.1rem; 
-            color: var(--mdc-on-surface);
-        }
-        
+        h1 { font-size: 1.75rem; }
+        h2 { font-size: 1.5rem; }
+        h3 { font-size: 1.25rem; }
+        h4 { font-size: 1.1rem; }
+
         @media (min-width: 768px) {
-            h1 { 
-                font-size: 2rem; 
-                color: var(--mdc-on-surface);
-            }
-            h2 { 
-                font-size: 1.75rem; 
-                color: var(--mdc-on-surface);
-            }
-            h3 { 
-                font-size: 1.5rem; 
-                color: var(--mdc-on-surface);
-            }
-            h4 { 
-                font-size: 1.25rem; 
-                color: var(--mdc-on-surface);
-            }
+            h1 { font-size: 2rem; }
+            h2 { font-size: 1.75rem; }
+            h3 { font-size: 1.5rem; }
+            h4 { font-size: 1.25rem; }
         }
 
         p, span, li, td, th, div {
@@ -457,9 +427,7 @@
             transition: color 0.3s ease;
         }
 
-        small, .text-muted {
-            color: var(--mdc-on-background-light) !important;
-        }
+        small, .text-muted { color: var(--mdc-on-background-light) !important; }
 
         a {
             color: var(--mdc-primary);
@@ -467,28 +435,16 @@
             transition: color 0.2s ease;
         }
 
-        a:hover {
-            color: var(--mdc-primary-dark);
-        }
+        a:hover { color: var(--mdc-primary-dark); }
 
-        /* Background Overrides for Contrast */
-        .mdc-top-app-bar,
-        .bottom-player-section,
-        .settings-hero {
+        .mdc-top-app-bar, .bottom-player-section, .settings-hero { color: var(--mdc-on-primary) !important; }
+
+        .mdc-top-app-bar h1, .mdc-top-app-bar p, .mdc-top-app-bar span,
+        .bottom-player-section div, .bottom-player-section span,
+        .settings-hero h1, .settings-hero p {
             color: var(--mdc-on-primary) !important;
         }
 
-        .mdc-top-app-bar h1,
-        .mdc-top-app-bar p,
-        .mdc-top-app-bar span,
-        .bottom-player-section div,
-        .bottom-player-section span,
-        .settings-hero h1,
-        .settings-hero p {
-            color: var(--mdc-on-primary) !important;
-        }
-
-        /* Container */
         .container {
             width: 100%;
             max-width: 1200px;
@@ -496,7 +452,6 @@
             padding: 0 var(--mdc-spacing-md);
         }
 
-        /* App Layout */
         .app-wrapper {
             display: flex;
             flex-direction: column;
@@ -505,7 +460,6 @@
             padding-bottom: 144px;
         }
 
-        /* Top App Bar - Modern Mobile App Style */
         .mdc-top-app-bar {
             position: fixed;
             top: 0;
@@ -527,9 +481,8 @@
             padding: 0 var(--mdc-spacing-md);
             max-width: 1200px;
             margin: 0 auto;
-            margin-top:20px;
-            margin-bottom:7px;
-            
+            margin-top:15px;
+            margin-bottom:17px;
         }
 
         .app-logo {
@@ -577,15 +530,9 @@
             transition: background-color 0.2s ease;
         }
 
-        .icon-button:hover {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
+        .icon-button:hover { background-color: rgba(255, 255, 255, 0.1); }
+        .icon-button.active { background-color: rgba(255, 255, 255, 0.2); }
 
-        .icon-button.active {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-
-        /* Bottom App Bar with Integrated Player */
         .bottom-app-bar {
             position: fixed;
             bottom: 0;
@@ -611,10 +558,7 @@
             gap: var(--mdc-spacing-md);
         }
 
-        .player-info {
-            flex: 1;
-            min-width: 0;
-        }
+        .player-info { flex: 1; min-width: 0; }
 
         .player-title {
             font-weight: 500;
@@ -654,15 +598,8 @@
             transition: all 0.2s ease;
         }
 
-        .player-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: scale(1.05);
-        }
-
-        .player-btn.primary {
-            background: var(--mdc-secondary);
-            color: var(--mdc-on-secondary);
-        }
+        .player-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        .player-btn.primary { background: var(--mdc-secondary); color: var(--mdc-on-secondary); }
 
         .bottom-nav-section {
             padding: var(--mdc-spacing-xs) 0;
@@ -682,7 +619,7 @@
             align-items: center;
             gap: 4px;
             padding: var(--mdc-spacing-xs) var(--mdc-spacing-sm);
-            color: var(--mdc-on-surface); 
+            color: var(--mdc-on-surface);
             opacity: 0.7;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -691,29 +628,20 @@
             border: none;
             border-radius:10px;
             margin:5px;
-            background:  var(--mdc-secondary);
+            background: var(--mdc-secondary);
             font-family: inherit;
-            
         }
 
-        .nav-item.active {
-            color: var(--mdc-primary);
-            opacity: 1;
-        }
- 
-        .nav-icon {
-            font-size: 30px;
-             
-        }
+        .nav-item.active { color: var(--mdc-primary); opacity: 1; }
+
+        .nav-icon { font-size: 30px; }
 
         .nav-label {
             font-size: 0.65rem;
             font-weight: 600;
             text-align: center;
-            
         }
 
-        /* Main Content */
         .main-content {
             flex: 1;
             padding: var(--mdc-spacing-lg) 0;
@@ -725,16 +653,13 @@
             min-height: calc(100vh - 144px);
         }
 
-        .page-content.active {
-            display: block;
-        }
+        .page-content.active { display: block; }
 
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Material Cards - Enhanced for Contrast */
         .mdc-card {
             background: var(--mdc-surface);
             border-radius: var(--mdc-border-radius);
@@ -745,19 +670,10 @@
             border: 1px solid rgba(10, 15, 45, 0.1);
         }
 
-        .mdc-card:hover {
-            box-shadow: var(--mdc-elevation-2);
-        }
+        .mdc-card:hover { box-shadow: var(--mdc-elevation-2); }
 
-        .mdc-card h1, 
-        .mdc-card h2, 
-        .mdc-card h3, 
-        .mdc-card h4, 
-        .mdc-card h5, 
-        .mdc-card h6,
-        .mdc-card p,
-        .mdc-card span,
-        .mdc-card div {
+        .mdc-card h1, .mdc-card h2, .mdc-card h3, .mdc-card h4, .mdc-card h5, .mdc-card h6,
+        .mdc-card p, .mdc-card span, .mdc-card div {
             color: var(--mdc-on-surface) !important;
         }
 
@@ -766,9 +682,7 @@
             border-bottom: 1px solid rgba(10, 15, 45, 0.1);
         }
 
-        .card-content {
-            padding: var(--mdc-spacing-lg);
-        }
+        .card-content { padding: var(--mdc-spacing-lg); }
 
         .card-actions {
             padding: var(--mdc-spacing-md) var(--mdc-spacing-lg);
@@ -778,7 +692,6 @@
             flex-wrap: wrap;
         }
 
-        /* Buttons */
         .mdc-button {
             display: inline-flex;
             align-items: center;
@@ -806,9 +719,7 @@
             transform: translateY(-1px);
         }
 
-        .mdc-button:active {
-            transform: translateY(0);
-        }
+        .mdc-button:active { transform: translateY(0); }
 
         .mdc-button.outlined {
             background: transparent;
@@ -826,20 +737,12 @@
             letter-spacing: normal;
         }
 
-        /* Grid System */
-        .mdc-grid {
-            display: grid;
-            gap: var(--mdc-spacing-lg);
-        }
-
+        .mdc-grid { display: grid; gap: var(--mdc-spacing-lg); }
         .grid-1 { grid-template-columns: 1fr; }
         .grid-2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
         .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
         .grid-4 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
 
-        /* Home Page Hero Slider */
-  
-       
         .hero-slider {
             position: relative;
             height: 80vh;
@@ -861,9 +764,7 @@
             background-position: center;
         }
 
-        .hero-slide.active {
-            opacity: 1;
-        }
+        .hero-slide.active { opacity: 1; }
 
         .hero-overlay {
             position: absolute;
@@ -890,7 +791,6 @@
             margin-bottom: var(--mdc-spacing-md);
         }
 
-        /* Podcast Page Hero Section */
         .podcast-hero {
             background: var(--mdc-gradient);
             color: var(--mdc-on-primary);
@@ -918,7 +818,6 @@
             margin-bottom: var(--mdc-spacing-lg);
         }
 
-        /* Podcast Items */
         .podcast-item {
             margin-bottom: var(--mdc-spacing-lg);
             padding: var(--mdc-spacing-lg);
@@ -929,10 +828,7 @@
             cursor: pointer;
         }
 
-        .podcast-item:hover {
-            box-shadow: var(--mdc-elevation-2);
-            transform: translateY(-2px);
-        }
+        .podcast-item:hover { box-shadow: var(--mdc-elevation-2); transform: translateY(-2px); }
 
         .podcast-item img {
             width: 100%;
@@ -960,7 +856,6 @@
             gap: 4px;
         }
 
-        /* Podcast Player */
         .podcast-player {
             margin-bottom: var(--mdc-spacing-lg);
             background: var(--mdc-surface);
@@ -975,10 +870,7 @@
             margin-top: var(--mdc-spacing-md);
         }
 
-        /* Search Section */
-        .search-section {
-            margin-bottom: var(--mdc-spacing-xl);
-        }
+        .search-section { margin-bottom: var(--mdc-spacing-xl); }
 
         .search-box {
             position: relative;
@@ -1012,7 +904,6 @@
             color: var(--mdc-on-background-light);
         }
 
-        /* Pagination - Fixed Text Color */
         .pagination {
             display: flex;
             justify-content: center;
@@ -1048,12 +939,8 @@
             color: var(--mdc-on-primary) !important;
         }
 
-        .page-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-        /* Share Buttons */
         .share-buttons {
             display: flex;
             flex-wrap: wrap;
@@ -1079,10 +966,7 @@
             flex: 1;
         }
 
-        .share-btn i {
-            font-size: 16px;
-            color: white !important;
-        }
+        .share-btn i { font-size: 16px; color: white !important; }
 
         .share-facebook { background: #1877F2; }
         .share-twitter { background: #000000; }
@@ -1092,15 +976,9 @@
         .share-email { background: #666666; }
         .share-copy { background: var(--mdc-primary); }
 
-        .share-btn:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
+        .share-btn:hover { opacity: 0.9; transform: translateY(-2px); }
 
-        /* Form Styles */
-        .mdc-textfield {
-            margin-bottom: var(--mdc-spacing-lg);
-        }
+        .mdc-textfield { margin-bottom: var(--mdc-spacing-lg); }
 
         .mdc-textfield label {
             display: block;
@@ -1110,9 +988,7 @@
             font-size: 0.875rem;
         }
 
-        .mdc-textfield input,
-        .mdc-textfield textarea,
-        .mdc-textfield select {
+        .mdc-textfield input, .mdc-textfield textarea, .mdc-textfield select {
             width: 100%;
             padding: 12px;
             border: 2px solid rgba(10, 15, 45, 0.1);
@@ -1124,14 +1000,12 @@
             color: var(--mdc-on-surface);
         }
 
-        .mdc-textfield input:focus,
-        .mdc-textfield textarea:focus {
+        .mdc-textfield input:focus, .mdc-textfield textarea:focus {
             outline: none;
             border-color: var(--mdc-primary);
             box-shadow: 0 0 0 3px rgba(10, 15, 45, 0.1);
         }
 
-        /* Settings Page - Enhanced for Mobile */
         .settings-hero {
             background: var(--mdc-gradient);
             color: var(--mdc-on-primary);
@@ -1157,9 +1031,7 @@
             min-width: 250px;
         }
 
-        .settings-hero-content .mdc-button {
-            min-width: 120px;
-        }
+        .settings-hero-content .mdc-button { min-width: 120px; }
 
         .settings-item {
             display: flex;
@@ -1171,27 +1043,13 @@
             gap: var(--mdc-spacing-sm);
         }
 
-        .settings-item:last-child {
-            border-bottom: none;
-        }
+        .settings-item:last-child { border-bottom: none; }
 
-        .settings-info {
-            flex: 1;
-            min-width: 200px;
-        }
+        .settings-info { flex: 1; min-width: 200px; }
 
-        .settings-title {
-            font-weight: 500;
-            margin-bottom: 2px;
-            color: var(--mdc-on-surface);
-        }
+        .settings-title { font-weight: 500; margin-bottom: 2px; color: var(--mdc-on-surface); }
+        .settings-description { font-size: 0.875rem; color: var(--mdc-on-background-light); }
 
-        .settings-description {
-            font-size: 0.875rem;
-            color: var(--mdc-on-background-light);
-        }
-
-        /* Switch */
         .mdc-switch {
             position: relative;
             display: inline-block;
@@ -1200,11 +1058,7 @@
             flex-shrink: 0;
         }
 
-        .mdc-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
+        .mdc-switch input { opacity: 0; width: 0; height: 0; }
 
         .mdc-switch-slider {
             position: absolute;
@@ -1230,15 +1084,9 @@
             border-radius: 50%;
         }
 
-        input:checked + .mdc-switch-slider {
-            background-color: var(--mdc-primary);
-        }
+        input:checked + .mdc-switch-slider { background-color: var(--mdc-primary); }
+        input:checked + .mdc-switch-slider:before { transform: translateX(20px); }
 
-        input:checked + .mdc-switch-slider:before {
-            transform: translateX(20px);
-        }
-
-        /* Slider */
         .mdc-slider {
             width: 100px;
             height: 4px;
@@ -1271,7 +1119,6 @@
             box-shadow: var(--mdc-elevation-1);
         }
 
-        /* Select Dropdown */
         .mdc-select {
             padding: 8px 12px;
             border: 1px solid rgba(10, 15, 45, 0.1);
@@ -1284,7 +1131,6 @@
             flex-shrink: 0;
         }
 
-        /* Channel Switcher */
         .channel-switcher {
             position: fixed;
             bottom: 144px;
@@ -1301,11 +1147,7 @@
             min-width: 200px;
         }
 
-        .channel-switcher.active {
-            transform: translateY(0);
-            opacity: 1;
-            visibility: visible;
-        }
+        .channel-switcher.active { transform: translateY(0); opacity: 1; visibility: visible; }
 
         .channel-option {
             display: flex;
@@ -1318,16 +1160,9 @@
             color: var(--mdc-modal-text) !important;
         }
 
-        .channel-option:hover {
-            background-color: rgba(10, 15, 45, 0.05);
-        }
+        .channel-option:hover { background-color: rgba(10, 15, 45, 0.05); }
+        .channel-option.active { background-color: rgba(10, 15, 45, 0.1); color: var(--mdc-primary) !important; }
 
-        .channel-option.active {
-            background-color: rgba(10, 15, 45, 0.1);
-            color: var(--mdc-primary) !important;
-        }
-
-        /* More Modal */
         .more-modal {
             position: fixed;
             top: 64px;
@@ -1341,9 +1176,7 @@
             display: none;
         }
 
-        .more-modal.active {
-            display: block;
-        }
+        .more-modal.active { display: block; }
 
         .more-modal .mdc-button.text {
             justify-content: flex-start;
@@ -1351,11 +1184,8 @@
             color: var(--mdc-modal-text) !important;
         }
 
-        .more-modal .mdc-button.text i {
-            color: var(--mdc-modal-text) !important;
-        }
+        .more-modal .mdc-button.text i { color: var(--mdc-modal-text) !important; }
 
-        /* Loading Spinner */
         .loading-spinner {
             display: flex;
             flex-direction: column;
@@ -1375,11 +1205,8 @@
             margin-bottom: var(--mdc-spacing-md);
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Alert Messages */
         .alert {
             padding: var(--mdc-spacing-md);
             border-radius: var(--mdc-border-radius);
@@ -1390,160 +1217,52 @@
             color: var(--mdc-on-surface);
         }
 
-        .alert-success {
-            border-left-color: var(--mdc-success);
-        }
-
-        .alert-error {
-            border-left-color: var(--mdc-error);
-        }
+        .alert-success { border-left-color: var(--mdc-success); }
+        .alert-error { border-left-color: var(--mdc-error); }
 
         @keyframes slideIn {
             from { transform: translateY(-10px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
 
-        /* Responsive Design */
         @media (max-width: 767px) {
-            .app-wrapper {
-                padding-top: 70px;
-                padding-bottom: 136px;
-            }
-            
-            .mdc-top-app-bar {
-                height: 100px;
-            }
-            
-            .app-logo-text {
-                font-size: 1rem;
-            }
-            
-            .hero-slider {
-                height: 70vh;
-                min-height: 450px;
-            }
-            
-            .hero-content h1 {
-                font-size: 1.5rem;
-            }
-            
-            .grid-2, .grid-3, .grid-4 {
-                grid-template-columns: 1fr;
-            }
-            
-            .nav-icon {
-                font-size: 18px;
-            }
-            
-            .nav-label {
-                font-size: 0.6rem;
-            }
-            
-            .settings-hero-content {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .settings-hero-content > div {
-                text-align: center;
-                width: 100%;
-            }
-            
-            .settings-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: var(--mdc-spacing-sm);
-            }
-            
-            .settings-info {
-                width: 100%;
-            }
-            
-            .mdc-slider {
-                width: 100%;
-            }
-            
-            .mdc-select {
-                width: 100%;
-            }
-            
-            .podcast-item img {
-                height: 150px;
-            }
-            
-            .podcast-meta {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: var(--mdc-spacing-xs);
-            }
-            
-            .podcast-hero h1 {
-                font-size: 1.5rem;
-            }
-            
-            .podcast-hero p {
-                font-size: 1rem;
-            }
-            
-            .share-btn {
-                min-width: calc(50% - 6px);
-                font-size: 0.7rem;
-                padding: 6px 8px;
-            }
-            
-            .more-modal {
-                top: 56px;
-                right: var(--mdc-spacing-sm);
-                left: var(--mdc-spacing-sm);
-                min-width: auto;
-            }
-            
-            .channel-switcher {
-                right: var(--mdc-spacing-sm);
-                left: var(--mdc-spacing-sm);
-                min-width: auto;
-            }
+            .app-wrapper { padding-top: 70px; padding-bottom: 136px; }
+            .mdc-top-app-bar { height: 100px; }
+            .app-logo-text { font-size: 1rem; }
+            .hero-slider { height: 70vh; min-height: 450px; }
+            .hero-content h1 { font-size: 1.5rem; }
+            .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+            .nav-icon { font-size: 18px; }
+            .nav-label { font-size: 0.6rem; }
+            .settings-hero-content { flex-direction: column; text-align: center; }
+            .settings-hero-content > div { text-align: center; width: 100%; }
+            .settings-item { flex-direction: column; align-items: flex-start; }
+            .settings-info { width: 100%; }
+            .mdc-slider { width: 100%; }
+            .mdc-select { width: 100%; }
+            .podcast-item img { height: 150px; }
+            .podcast-meta { flex-direction: column; align-items: flex-start; }
+            .podcast-hero h1 { font-size: 1.5rem; }
+            .podcast-hero p { font-size: 1rem; }
+            .share-btn { min-width: calc(50% - 6px); font-size: 0.7rem; padding: 6px 8px; }
+            .more-modal { top: 56px; right: var(--mdc-spacing-sm); left: var(--mdc-spacing-sm); min-width: auto; }
+            .channel-switcher { right: var(--mdc-spacing-sm); left: var(--mdc-spacing-sm); min-width: auto; }
         }
 
         @media (min-width: 768px) and (max-width: 1023px) {
-            .app-wrapper {
-                padding-bottom: 136px;
-            }
-            
-            .grid-3 {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .hero-slider {
-                height: 55vh;
-            }
-            
-            .settings-hero-content {
-                flex-direction: row;
-            }
-            
-            .share-btn {
-                min-width: calc(33.333% - 8px);
-            }
+            .app-wrapper { padding-bottom: 136px; }
+            .grid-3 { grid-template-columns: repeat(2, 1fr); }
+            .hero-slider { height: 55vh; }
+            .settings-hero-content { flex-direction: row; }
+            .share-btn { min-width: calc(33.333% - 8px); }
         }
 
         @media (min-width: 1024px) {
-            .bottom-nav {
-                max-width: 500px;
-                margin: 0 auto;
-            }
-            
-            .hero-slider {
-                height: 85vh;
-                max-height: 750px;
-            }
-            
-            .share-btn {
-                min-width: calc(20% - 8px);
-            }
+            .bottom-nav { max-width: 500px; margin: 0 auto; }
+            .hero-slider { height: 85vh; max-height: 750px; }
+            .share-btn { min-width: calc(20% - 8px); }
         }
 
-        /* Utility Classes */
         .text-center { text-align: center; }
         .text-primary { color: var(--mdc-primary) !important; }
         .text-secondary { color: var(--mdc-secondary) !important; }
@@ -1560,34 +1279,18 @@
         .p-3 { padding: var(--mdc-spacing-lg); }
         .p-4 { padding: var(--mdc-spacing-xl); }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(10, 15, 45, 0.05); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(10, 15, 45, 0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(10, 15, 45, 0.3); }
 
-        ::-webkit-scrollbar-track {
-            background: rgba(10, 15, 45, 0.05);
-            border-radius: 4px;
+        .post-content img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 15px auto;
+            border-radius: 8px;
         }
-
-        ::-webkit-scrollbar-thumb {
-            background: rgba(10, 15, 45, 0.2);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: rgba(10, 15, 45, 0.3);
-        }
-        
-      .post-content img { 
-    max-width: 100%;
-    height: auto;
-    display: block;
-    margin: 15px auto;  /* centers and adds spacing */
-    border-radius: 8px; /* optional: make them look neat */
-}
-
     </style>
 </head>
 <body class="theme-deep-blue">
@@ -1678,22 +1381,15 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Quick Actions -->
-            
-
-               
                 </div>
             </div>
 
             <!-- Podcast Page -->
             <div class="page-content" id="podcast-page">
                 <div class="container">
-                    <!-- Podcast Hero Section -->
                     <div class="podcast-hero" style="background-image: linear-gradient(rgba(10, 15, 45, 0.7), rgba(10, 15, 45, 0.7)), url('images/herr2.webp'); background-size:cover;"> 
                         <div class="podcast-hero-content">
-      <img src="images/hepp.webp" width="300" height="300" style="border-radius:10px;" >                    
-                            
+                            <img src="images/hepp.webp" width="300" height="300" style="border-radius:10px;" >
                             <h1 style="text-shadow:1px 0px 1px #fff;"> </h1>
                             <p style="text-shadow:1px 0px 1px #fff;"> </p>
                             <div id="podcastStats" style="display: none;">
@@ -1701,8 +1397,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Current Podcast Player -->
                     <div class="podcast-player" id="currentPodcastPlayer" style="display: none;">
                         <h3>Now Playing</h3>
                         <div id="currentPodcastInfo"></div>
@@ -1710,17 +1404,11 @@
                             Your browser does not support the audio element.
                         </audio>
                     </div>
-
-                    <!-- Podcast Loading -->
                     <div id="podcastLoading" class="loading-spinner">
                         <div class="spinner"></div>
                         <p>Loading podcasts...</p>
                     </div>
-
-                    <!-- Podcast List -->
                     <div id="podcastList" style="display: none;"></div>
-
-                    <!-- Podcast Pagination -->
                     <div class="pagination" id="podcastPagination" style="display: none; margin-top: var(--mdc-spacing-xl);"></div>
                 </div>
             </div>
@@ -1935,7 +1623,7 @@
                                 </div>
                                 <div>
                                     <h3>Our Mission</h3>
-                                    <p>Deliver 24/7 uplifting Christian contents that bridges cultural divides, strengthens faith, and spreads the Gospel through innovative digital platforms.</p>
+                                    <p>Deliver 24/7 uplifting Christian content that bridges cultural divides, strengthens faith, and spreads the Gospel through innovative digital platforms.</p>
                                 </div>
                             </div>
                             
@@ -2127,7 +1815,7 @@
                                 </div>
                                 <div>
                                     <h3>Connect With Us</h3>
-                                    <p class="mb-2">Follow us on social media for more updates and edifying contents:</p>
+                                    <p class="mb-2">Follow us on social media for updates and inspiration:</p>
                                     
                                     <!-- Responsive Social Media Buttons -->
                                     <div class="share-buttons mt-3">
@@ -2273,6 +1961,10 @@
             </div>
         </main>
     </div>
+    
+    
+    
+    
 
     <!-- Channel Switcher -->
     <div class="channel-switcher" id="channelSwitcher">
@@ -2292,7 +1984,6 @@
 
     <!-- Bottom App Bar with Integrated Player -->
     <footer class="bottom-app-bar">
-        <!-- Radio Player Section -->
         <div class="bottom-player-section">
             <div class="player-controls">
                 <div class="player-info">
@@ -2315,29 +2006,27 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Navigation Section -->
         <div class="bottom-nav-section">
             <ul class="bottom-nav">
                 <li class="nav-item active" data-page="home">
-                    <i class="material-icons nav-icon" style="text-shadow:5px 0px 17px #fff;   ">home</i>
-                     <span class="nav-label">Home</span>
+                    <i class="material-icons nav-icon" style="text-shadow:5px 0px 17px #fff;">home</i>
+                    <span class="nav-label">Home</span>
                 </li>
                 <li class="nav-item" data-page="podcast">
                     <i class="material-icons nav-icon" style="text-shadow:5px 0px 17px #fff;">podcasts</i>
-                    <span class="nav-label">Podcasts</span> 
-                </li> 
+                    <span class="nav-label">Podcasts</span>
+                </li>
                 <li class="nav-item" data-page="prayer">
                     <i class="material-icons nav-icon" style="text-shadow:5px 0px 17px #fff;">self_improvement</i>
                     <span class="nav-label">Prayer</span>
                 </li>
                 <li class="nav-item" data-page="blog">
                     <i class="material-icons nav-icon" style="text-shadow:5px 0px 17px #fff;">article</i>
-                    <span class="nav-label">Blog</span> 
+                    <span class="nav-label">Blog</span>
                 </li>
                 <li class="nav-item" data-page="more">
                     <i class="material-icons nav-icon" style="text-shadow:5px 0px 17px #fff;">more_horiz</i>
-                    <span class="nav-label">More</span> 
+                    <span class="nav-label">More</span>
                 </li>
             </ul>
         </div>
@@ -2350,6 +2039,7 @@
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
     <script>
+    // ========== CORDOVA & GLOBAL SETUP ==========
     const isCordova = !!window.cordova;
 
     // Wait for Cordova to load
@@ -2380,6 +2070,7 @@
         }
     }, false);
 
+    // ========== MUSIC CONTROLS (LOCK SCREEN) ==========
     function initMusicControls() {
         if (isCordova && window.MusicControls) {
             window.MusicControls.create({
@@ -2419,7 +2110,7 @@
         }
     }
 
-    // Radio stability variables
+    // ========== RADIO FUNCTIONS (with MusicControls sync) ==========
     const radioStability = {
         reconnectAttempts: 0,
         maxReconnectAttempts: 5,
@@ -2438,6 +2129,7 @@
         const station = appState.stations[appState.currentStation];
         clearRadioTimeouts();
 
+        // Update lock screen notification
         if (isCordova && window.MusicControls) {
             window.MusicControls.updateIsPlaying(true);
         }
@@ -2464,6 +2156,7 @@
         clearRadioTimeouts();
         stopStabilityMonitoring();
 
+        // Update lock screen notification
         if (isCordova && window.MusicControls) {
             window.MusicControls.updateIsPlaying(false);
         }
@@ -2478,6 +2171,7 @@
         clearRadioTimeouts();
         stopStabilityMonitoring();
 
+        // Destroy the notification
         if (isCordova && window.MusicControls) {
             window.MusicControls.destroy();
         }
@@ -2489,7 +2183,7 @@
         elements.playPauseIcon.textContent = 'play_arrow';
     }
 
-    // Enhanced stability functions (unchanged)
+    // Enhanced stability functions
     function startStabilityMonitoring() {
         stopStabilityMonitoring();
         radioStability.connectionCheckInterval = setInterval(() => {
@@ -2572,16 +2266,19 @@
 
     function handleVisibilityChange() {
         if (document.hidden) {
+            console.log('App minimized/backgrounded');
             radioStability.isBackgroundMode = true;
             radioStability.wasPlayingBeforeMinimize = appState.radioPlaying;
             if (radioStability.isSafari && appState.radioPlaying) {
                 elements.radioAudio.pause();
             }
         } else {
+            console.log('App foregrounded');
             radioStability.isBackgroundMode = false;
             if (radioStability.wasPlayingBeforeMinimize && appState.radioShouldPlay) {
                 setTimeout(() => {
                     if (appState.radioShouldPlay && !appState.radioPlaying) {
+                        console.log('Resuming playback after foreground');
                         elements.radioAudio.play().catch(error => {
                             console.log('Resume failed, reconnecting...');
                             scheduleReconnect();
@@ -2623,12 +2320,14 @@
         const audio = elements.radioAudio;
         if (appState.radioShouldPlay && appState.radioPlaying) {
             if (audio.paused && !audio.ended) {
+                console.log('Audio unexpectedly paused, attempting resume...');
                 audio.play().catch(error => {
                     console.log('Resume failed, reconnecting...');
                     scheduleReconnect();
                 });
             }
             if (audio.readyState < 2 && Date.now() - radioStability.lastBufferTime > 10000) {
+                console.log('No data for 10 seconds, reconnecting...');
                 scheduleReconnect();
             }
         }
@@ -2637,10 +2336,12 @@
     function scheduleReconnect() {
         clearTimeout(radioStability.playAttemptTimeout);
         if (radioStability.reconnectAttempts >= radioStability.maxReconnectAttempts) {
+            console.log('Max reconnection attempts reached');
             radioStability.reconnectAttempts = 0;
             return;
         }
         radioStability.reconnectAttempts++;
+        console.log(`Reconnection attempt ${radioStability.reconnectAttempts}/${radioStability.maxReconnectAttempts}`);
         const delay = Math.min(radioStability.reconnectDelay * Math.pow(1.5, radioStability.reconnectAttempts - 1), 30000);
         radioStability.playAttemptTimeout = setTimeout(() => {
             if (appState.radioShouldPlay) {
@@ -2650,6 +2351,7 @@
     }
 
     function reconnectRadio() {
+        console.log('Attempting to reconnect radio...');
         const station = appState.stations[appState.currentStation];
         const oldAudio = elements.radioAudio;
         const newAudio = new Audio();
@@ -2669,12 +2371,16 @@
         newAudio.load();
         const playPromise = newAudio.play();
         if (playPromise !== undefined) {
-            playPromise.then(() => {
-                radioStability.reconnectAttempts = 0;
-                radioStability.lastBufferTime = Date.now();
-            }).catch(error => {
-                scheduleReconnect();
-            });
+            playPromise
+                .then(() => {
+                    console.log('Reconnection successful');
+                    radioStability.reconnectAttempts = 0;
+                    radioStability.lastBufferTime = Date.now();
+                })
+                .catch(error => {
+                    console.log('Reconnection play failed:', error);
+                    scheduleReconnect();
+                });
         }
     }
 
@@ -2753,6 +2459,7 @@
 
     emailjs.init('835HY_wRkYBhqdu7d');
 
+    // App State
     const appState = {
         currentPage: 'home',
         radioPlaying: false,
@@ -2839,6 +2546,7 @@
         blogPagination: document.getElementById('blogPagination')
     };
 
+    // ========== MAIN APP INITIALIZATION ==========
     function initMainApp() {
         function navigateTo(page) {
             appState.currentPage = page;
@@ -3016,12 +2724,468 @@
             document.body.classList.add(`theme-${theme}`);
         }
 
-        // (The rest of the UI functions – blog, podcast, etc. – are exactly as you provided, I'm including them in the full file for completeness)
-        // ... [All the remaining functions from your original script, like loadHeroSlider, renderHeroSlider, loadBlogPosts, etc., are included verbatim]
-        // To keep this answer within length limits, I will not repeat them here, but they are in the complete HTMLEOF block above.
-        // The full file above contains everything.
+        // ---------- BLOG SLIDER FUNCTIONS ----------
+        async function loadHeroSlider() {
+            if (!elements.blogHeroSlider) return;
+            elements.blogHeroSlider.innerHTML = `<div style="height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0a0f2d 0%, #1a235c 100%); color: white; text-align: center; padding: 40px; border-radius: 12px;"><div><h3 style="font-size: 1.8rem; margin-bottom: 15px;">Latest Articles</h3><p>Loading...</p></div></div>`;
+            try {
+                const cacheKey = 'blog_hero_slides';
+                const cachedData = localStorage.getItem(cacheKey);
+                const now = Date.now();
+                if (cachedData) {
+                    const { data, timestamp } = JSON.parse(cachedData);
+                    if (now - timestamp < 5 * 60 * 1000) {
+                        renderHeroSlider(data);
+                        return;
+                    }
+                }
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                const response = await fetch(
+                    'https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts?per_page=3&_fields=id,title,date,excerpt,featured_media,_links&_embed',
+                    { signal: controller.signal }
+                ).finally(() => clearTimeout(timeoutId));
+                if (!response.ok) throw new Error('Failed to load hero posts');
+                const posts = await response.json();
+                localStorage.setItem(cacheKey, JSON.stringify({ data: posts, timestamp: now }));
+                renderHeroSlider(posts);
+            } catch (error) {
+                console.error('Error loading hero slider:', error);
+                elements.blogHeroSlider.innerHTML = `<div style="height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0a0f2d 0%, #1a235c 100%); color: white; text-align: center; padding: 40px; border-radius: 12px;"><div><h3 style="font-size: 1.8rem; margin-bottom: 15px;">Latest Articles</h3><p>Stay tuned for inspiring content!</p><button onclick="loadHeroSlider()" style="margin-top: 20px; background: white; color: #333; border: none; padding: 10px 25px; border-radius: 25px; font-weight: 600; cursor: pointer;">Refresh</button></div></div>`;
+            }
+        }
 
-        // Setup event listeners
+        function renderHeroSlider(posts) {
+            elements.blogHeroSlider.innerHTML = '';
+            elements.heroDots.innerHTML = '';
+            appState.heroSlides = [];
+            if (!posts || posts.length === 0) {
+                elements.blogHeroSlider.innerHTML = `<div style="height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #0a0f2d 0%, #1a235c 100%); color: white; text-align: center; padding: 40px; border-radius: 12px;"><div><h3 style="font-size: 1.8rem; margin-bottom: 15px;">Latest Articles</h3><p>New content coming soon!</p></div></div>`;
+                return;
+            }
+            posts.forEach(post => {
+                const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+                if (image) { const img = new Image(); img.src = image; }
+            });
+            posts.forEach((post, index) => {
+                const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url || '';
+                const date = new Date(post.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const slide = document.createElement('div');
+                slide.className = 'hero-slide';
+                slide.style.cssText = `position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: ${index === 0 ? '1' : '0'}; transition: opacity 0.6s ease-in-out; background-image: url('${image || 'images/herr1.webp'}'); background-size: cover; background-position: center; background-repeat: no-repeat; display: flex; align-items: center; justify-content: center;`;
+                slide.innerHTML = `<div class="hero-slide-content" style="position: relative; z-index: 2; color: white; max-width: 800px; width: 90%; padding: 40px; margin: 0 auto; text-align: center; text-shadow: 0 2px 10px rgba(0,0,0,0.8);"><div style="background: rgba(0, 0, 0, 0.7); padding: 35px; border-radius: 12px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.3);"><h3 style="margin: 0 0 20px 0; font-size: 2.2rem; line-height: 1.3; font-weight: 700; letter-spacing: -0.5px; text-shadow:1px 0px 1px #fff;">${post.title.rendered || post.title}</h3><div style="display: flex; justify-content: center; align-items: center; gap: 30px; flex-wrap: wrap;"><span style="font-size: 1rem; opacity: 0.9; background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 20px; backdrop-filter: blur(5px); text-shadow:1px 0px 1px #fff;">📅 ${date}</span><button onclick="loadSinglePost(${post.id})" style="background: linear-gradient(to right, #4facfe 0%, #05081a 100%); color: white; border: none; padding: 12px 32px; border-radius: 30px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3); letter-spacing: 0.5px;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 6px 20px rgba(0, 242, 254, 0.4)'" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0, 242, 254, 0.3)'">Read Article →</button></div></div></div>`;
+                elements.blogHeroSlider.appendChild(slide);
+                appState.heroSlides.push(slide);
+                const dot = document.createElement('button');
+                dot.className = 'hero-dot';
+                dot.style.cssText = `width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; background: ${index === 0 ? 'white' : 'transparent'}; cursor: pointer; transition: all 0.3s ease; padding: 0;`;
+                dot.onclick = () => showHeroSlide(index);
+                elements.heroDots.appendChild(dot);
+            });
+            appState.heroCurrentSlide = 0;
+            elements.heroNextBtn.onclick = nextHeroSlide;
+            elements.heroPrevBtn.onclick = prevHeroSlide;
+            startAutoSlide();
+            elements.blogHeroSlider.addEventListener('mouseenter', () => clearInterval(appState.heroAutoSlideInterval));
+            elements.blogHeroSlider.addEventListener('mouseleave', () => startAutoSlide());
+        }
+
+        function showHeroSlide(index) {
+            if (appState.heroSlides.length === 0) return;
+            appState.heroCurrentSlide = index;
+            appState.heroSlides.forEach((slide, i) => slide.style.opacity = i === index ? '1' : '0');
+            const dots = document.querySelectorAll('.hero-dot');
+            dots.forEach((dot, i) => dot.style.background = i === index ? 'white' : 'transparent');
+        }
+
+        function nextHeroSlide() {
+            if (appState.heroSlides.length === 0) return;
+            const nextIndex = (appState.heroCurrentSlide + 1) % appState.heroSlides.length;
+            showHeroSlide(nextIndex);
+        }
+
+        function prevHeroSlide() {
+            if (appState.heroSlides.length === 0) return;
+            const prevIndex = (appState.heroCurrentSlide - 1 + appState.heroSlides.length) % appState.heroSlides.length;
+            showHeroSlide(prevIndex);
+        }
+
+        function startAutoSlide() {
+            if (appState.heroAutoSlideInterval) clearInterval(appState.heroAutoSlideInterval);
+            if (appState.heroSlides.length > 0) {
+                appState.heroAutoSlideInterval = setInterval(() => nextHeroSlide(), 4000);
+            }
+        }
+
+        // ---------- BLOG POSTS FUNCTIONS ----------
+        async function loadBlogPosts(page = 1) {
+            if (!elements.blogPosts || !elements.blogLoading) return;
+            elements.blogLoading.style.display = 'flex';
+            elements.blogPosts.style.display = 'none';
+            elements.blogPagination.innerHTML = '';
+            try {
+                const cacheKey = `blog_posts_page_${page}`;
+                const cachedData = localStorage.getItem(cacheKey);
+                const now = Date.now();
+                if (cachedData) {
+                    const { data, totalPages, totalPosts, timestamp } = JSON.parse(cachedData);
+                    if (now - timestamp < 10 * 60 * 1000) {
+                        renderBlogPosts(data, page, totalPages, totalPosts);
+                        return;
+                    }
+                }
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const response = await fetch(
+                    `https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts?per_page=${appState.blogPerPage}&page=${page}&_embed`,
+                    { signal: controller.signal }
+                ).finally(() => clearTimeout(timeoutId));
+                if (!response.ok) throw new Error('Failed to load posts');
+                const posts = await response.json();
+                const totalPosts = parseInt(response.headers.get('X-WP-Total')) || 0;
+                const totalPages = parseInt(response.headers.get('X-WP-TotalPages')) || 1;
+                localStorage.setItem(cacheKey, JSON.stringify({ data: posts, totalPages, totalPosts, timestamp: now }));
+                renderBlogPosts(posts, page, totalPages, totalPosts);
+            } catch (error) {
+                console.error('Error loading blog posts:', error);
+                elements.blogLoading.innerHTML = `<div class="alert alert-error"><p>Unable to load blog posts. Please check your connection and try again.</p><button class="mdc-button mt-2" onclick="loadBlogPosts(${page})">Retry</button></div>`;
+            }
+        }
+
+        function renderBlogPosts(posts, currentPage, totalPages, totalPosts) {
+            appState.allBlogPosts = posts;
+            appState.filteredBlogPosts = posts;
+            appState.blogPage = currentPage;
+            if (posts.length === 0) {
+                elements.blogPosts.innerHTML = `<div class="alert" style="grid-column: 1 / -1;"><p>No blog posts found.</p></div>`;
+            } else {
+                elements.blogPosts.innerHTML = posts.map(post => {
+                    const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+                    const excerpt = post.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150) + '...';
+                    const date = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                    const author = post._embedded?.author?.[0]?.name || 'Admin';
+                    return `<div class="podcast-item" onclick="loadSinglePost(${post.id})">${image ? `<img src="${image}" alt="${post.title.rendered}" loading="lazy">` : `<div style="height: 200px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; margin-bottom: var(--mdc-spacing-md);">${post.title.rendered.charAt(0)}</div>`}<div class="podcast-meta"><span><i class="material-icons">calendar_today</i> ${date}</span><span><i class="material-icons">person</i> ${author}</span></div><h3>${post.title.rendered}</h3><p>${excerpt}</p><button class="mdc-button text">Read More</button></div>`;
+                }).join('');
+            }
+            elements.blogLoading.style.display = 'none';
+            elements.blogPosts.style.display = 'grid';
+            if (totalPages > 1) {
+                renderPagination('blogPagination', currentPage, totalPages, (p) => loadBlogPosts(p));
+            }
+        }
+
+        async function loadSinglePost(postId) {
+            navigateTo('single-blog');
+            const container = document.getElementById('singlePostContent');
+            container.innerHTML = `<div class="loading-spinner"><div class="spinner"></div><p>Loading post...</p></div>`;
+            try {
+                const cacheKey = `blog_post_${postId}`;
+                const cachedData = localStorage.getItem(cacheKey);
+                const now = Date.now();
+                if (cachedData) {
+                    const { data, timestamp } = JSON.parse(cachedData);
+                    if (now - timestamp < 30 * 60 * 1000) {
+                        renderSinglePost(data);
+                        return;
+                    }
+                }
+                const response = await fetch(`https://kingdomlifestyleradio.com/wp/wp-json/wp/v2/posts/${postId}?_embed`);
+                if (!response.ok) throw new Error('Failed to load post');
+                const post = await response.json();
+                localStorage.setItem(cacheKey, JSON.stringify({ data: post, timestamp: now }));
+                renderSinglePost(post);
+            } catch (error) {
+                console.error('Error loading post:', error);
+                container.innerHTML = `<div class="alert alert-error"><p>Unable to load this post. Please try again later.</p><button class="mdc-button mt-2" onclick="navigateTo('blog')">Back to Blog</button></div>`;
+            }
+        }
+
+        function renderSinglePost(post) {
+            const container = document.getElementById('singlePostContent');
+            const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+            const date = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            const author = post._embedded?.author?.[0]?.name || 'Admin';
+            const currentUrl = window.location.origin + window.location.pathname + `?post=${post.id}`;
+            const postTitle = post.title.rendered;
+            const postExcerpt = post.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150) + '...';
+            container.innerHTML = `<div class="mdc-card"><button class="mdc-button text mb-3" onclick="navigateTo('blog')"><i class="material-icons">arrow_back</i> Back to Blog</button>${image ? `<img src="${image}" alt="${postTitle}" style="width: 100%; height: 300px; object-fit: cover; border-radius: var(--mdc-border-radius); margin-bottom: var(--mdc-spacing-lg);" loading="lazy">` : `<div style="height: 300px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 4rem; margin-bottom: var(--mdc-spacing-lg);">${postTitle.charAt(0)}</div>`}<div class="card-content"><div class="podcast-meta"><span><i class="material-icons">calendar_today</i> ${date}</span><span><i class="material-icons">person</i> ${author}</span></div><h1>${postTitle}</h1><div class="post-content">${post.content.rendered}</div><div class="mt-4"><h3>Share this post</h3><div class="share-buttons"><button class="share-btn share-facebook" onclick="sharePost('facebook', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')"><i class="material-icons">facebook</i> Facebook</button><button class="share-btn share-twitter" onclick="sharePost('twitter', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')"><i class="material-icons">X</i> Twitter</button><button class="share-btn share-whatsapp" onclick="sharePost('whatsapp', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')"><i class="material-icons">whatshot</i> WhatsApp</button><button class="share-btn share-telegram" onclick="sharePost('telegram', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')"><i class="material-icons">telegram</i> Telegram</button><button class="share-btn share-linkedin" onclick="sharePost('linkedin', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')"><i class="material-icons">link</i> LinkedIn</button><button class="share-btn share-email" onclick="sharePost('email', '${encodeURIComponent(currentUrl)}', '${encodeURIComponent(postTitle)}', '${encodeURIComponent(postExcerpt)}')"><i class="material-icons">email</i> Email</button><button class="share-btn share-copy" onclick="copyToClipboard('${currentUrl}')"><i class="material-icons">content_copy</i> Copy Link</button></div></div></div></div>`;
+        }
+
+        function sharePost(platform, url, title, excerpt) {
+            const decodedUrl = decodeURIComponent(url);
+            const decodedTitle = decodeURIComponent(title);
+            const decodedExcerpt = decodeURIComponent(excerpt);
+            let shareUrl = '';
+            switch(platform) {
+                case 'facebook': shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${url}&quote=${title}`; break;
+                case 'twitter': shareUrl = `https://twitter.com/intent/tweet?url=${url}&text=${title}&hashtags=KLSR,Gospel`; break;
+                case 'whatsapp': shareUrl = `https://wa.me/?text=${title}%20${url}`; break;
+                case 'telegram': shareUrl = `https://t.me/share/url?url=${url}&text=${title}`; break;
+                case 'linkedin': shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`; break;
+                case 'email': shareUrl = `mailto:?subject=${title}&body=${decodedExcerpt}%0A%0ARead more: ${decodedUrl}`; break;
+                default: return;
+            }
+            if (platform === 'email') window.location.href = shareUrl;
+            else window.open(shareUrl, '_blank', 'noopener,noreferrer');
+        }
+
+        function searchBlogPosts() {
+            const searchTerm = document.getElementById('blogSearch').value.toLowerCase();
+            if (!searchTerm) {
+                appState.filteredBlogPosts = appState.allBlogPosts;
+            } else {
+                appState.filteredBlogPosts = appState.allBlogPosts.filter(post =>
+                    post.title.rendered.toLowerCase().includes(searchTerm) ||
+                    post.excerpt.rendered.toLowerCase().includes(searchTerm)
+                );
+            }
+            displayFilteredBlogPosts();
+        }
+
+        function displayFilteredBlogPosts() {
+            const container = document.getElementById('blogPosts');
+            if (appState.filteredBlogPosts.length === 0) {
+                container.innerHTML = `<div class="alert" style="grid-column: 1 / -1;"><p>No articles found matching your search. Try different keywords.</p></div>`;
+                return;
+            }
+            container.innerHTML = appState.filteredBlogPosts.map(post => {
+                const image = post._embedded?.['wp:featuredmedia']?.[0]?.source_url;
+                const excerpt = post.excerpt.rendered.replace(/<[^>]+>/g, '').substring(0, 150) + '...';
+                const date = new Date(post.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                const author = post._embedded?.author?.[0]?.name || 'Admin';
+                return `<div class="podcast-item" onclick="loadSinglePost(${post.id})">${image ? `<img src="${image}" alt="${post.title.rendered}" loading="lazy">` : `<div style="height: 200px; background: var(--mdc-gradient); border-radius: var(--mdc-border-radius); display: flex; align-items: center; justify-content: center; color: white; font-size: 2rem; margin-bottom: var(--mdc-spacing-md);">${post.title.rendered.charAt(0)}</div>`}<div class="podcast-meta"><span><i class="material-icons">calendar_today</i> ${date}</span><span><i class="material-icons">person</i> ${author}</span></div><h3>${post.title.rendered}</h3><p>${excerpt}</p><button class="mdc-button text">Read More</button></div>`;
+            }).join('');
+            document.getElementById('blogPagination').innerHTML = '';
+        }
+
+        // ---------- PODCAST FUNCTIONS ----------
+        async function loadPodcasts(page = 1) {
+            elements.podcastLoading.style.display = 'flex';
+            elements.podcastList.style.display = 'none';
+            elements.podcastPagination.style.display = 'none';
+            elements.currentPodcastPlayer.style.display = 'none';
+            try {
+                const rssUrl = "https://anchor.fm/s/1d6ad87c/podcast/rss";
+                const cacheKey = `podcasts_all`;
+                const cachedData = localStorage.getItem(cacheKey);
+                const now = Date.now();
+                let allEpisodes = [];
+                let podcastInfo = {};
+                if (cachedData) {
+                    const { data, info, timestamp } = JSON.parse(cachedData);
+                    if (now - timestamp < 60 * 60 * 1000) {
+                        allEpisodes = data;
+                        podcastInfo = info;
+                    }
+                }
+                if (allEpisodes.length === 0) {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+                    const response = await fetch(rssUrl, { signal: controller.signal }).finally(() => clearTimeout(timeoutId));
+                    if (!response.ok) throw new Error('Failed to load RSS feed');
+                    const rssText = await response.text();
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(rssText, "text/xml");
+                    const channel = xmlDoc.querySelector('channel');
+                    podcastInfo = {
+                        title: channel.querySelector('title')?.textContent || 'Kingdom Lifestyle Podcast',
+                        description: channel.querySelector('description')?.textContent || 'Welcome to Kingdom Lifestyle Podcast.'
+                    };
+                    const items = xmlDoc.querySelectorAll('item');
+                    allEpisodes = Array.from(items).map((item, index) => {
+                        const title = item.querySelector('title')?.textContent || `Episode ${index + 1}`;
+                        const description = item.querySelector('description')?.textContent || '';
+                        const pubDate = item.querySelector('pubDate')?.textContent || new Date().toISOString();
+                        const enclosure = item.querySelector('enclosure');
+                        const audioUrl = enclosure?.getAttribute('url') || '';
+                        const duration = item.querySelector('itunes\\:duration')?.textContent || '';
+                        const cleanDescription = description.replace(/<[^>]+>/g, '').substring(0, 200) + '...';
+                        const itunesImage = item.querySelector('itunes\\:image, image')?.getAttribute('href');
+                        const imageUrl = itunesImage || 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80';
+                        return { id: index + 1, title, description: cleanDescription, fullDescription: description, pubDate, audio: audioUrl, duration, image: imageUrl, author: item.querySelector('author')?.textContent || 'Kingdom Lifestyle Radio' };
+                    }).filter(episode => episode.audio);
+                    localStorage.setItem(cacheKey, JSON.stringify({ data: allEpisodes, info: podcastInfo, timestamp: now }));
+                }
+                appState.podcastData.episodes = allEpisodes;
+                appState.podcastData.totalEpisodes = allEpisodes.length;
+                appState.podcastData.totalPages = Math.ceil(allEpisodes.length / appState.podcastPerPage);
+                appState.podcastData.currentPage = page;
+                appState.podcastData.podcastInfo = podcastInfo;
+                renderPodcasts(allEpisodes, page, Math.ceil(allEpisodes.length / appState.podcastPerPage), allEpisodes.length);
+            } catch (error) {
+                console.error('Error loading podcasts:', error);
+                const demoEpisodes = [
+                    { id: 1, title: "Morning Devotion - Start Your Day Right", description: "Begin your day with spiritual nourishment...", fullDescription: "Begin your day...", pubDate: new Date().toISOString(), audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", duration: "15:30", image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", author: "Pastor Olalekan" },
+                    { id: 2, title: "Faith in Action - Practical Christianity", description: "Learn how to apply biblical principles...", fullDescription: "Learn how...", pubDate: new Date(Date.now() - 86400000).toISOString(), audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", duration: "22:15", image: "https://images.unsplash.com/photo-1544717305-99670f9c28f3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", author: "Kingdom Team" },
+                    { id: 3, title: "Prayer Warriors - Intercessory Insights", description: "Deepen your prayer life...", fullDescription: "Deepen...", pubDate: new Date(Date.now() - 172800000).toISOString(), audio: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", duration: "18:45", image: "https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80", author: "Prayer Ministry" }
+                ];
+                appState.podcastData.episodes = demoEpisodes;
+                appState.podcastData.totalEpisodes = demoEpisodes.length;
+                appState.podcastData.totalPages = 1;
+                appState.podcastData.currentPage = 1;
+                if (elements.podcastStats && elements.podcastCount) {
+                    elements.podcastStats.style.display = 'block';
+                    elements.podcastCount.textContent = demoEpisodes.length;
+                }
+                renderPodcasts(demoEpisodes, 1, 1, demoEpisodes.length);
+            }
+        }
+
+        function renderPodcasts(allEpisodes, currentPage, totalPages, totalEpisodes) {
+            if (elements.podcastStats && elements.podcastCount) {
+                elements.podcastStats.style.display = 'block';
+                elements.podcastCount.textContent = totalEpisodes;
+            }
+            const start = (currentPage - 1) * appState.podcastPerPage;
+            const end = start + appState.podcastPerPage;
+            const pageEpisodes = allEpisodes.slice(start, end);
+            if (pageEpisodes.length === 0) {
+                elements.podcastList.innerHTML = `<div class="alert" style="width: 100%;"><p>No podcast episodes available at the moment. Please check back later.</p></div>`;
+            } else {
+                elements.podcastList.innerHTML = pageEpisodes.map(podcast => {
+                    const date = new Date(podcast.pubDate).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                    return `<div class="podcast-item" onclick="playPodcast(${podcast.id})"><img src="${podcast.image}" alt="${podcast.title}" loading="lazy" style="height:100%; width:100%;" onerror="this.src='https://images.unsplash.com/photo-1511379938547-c1f69419868d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80'"><div class="podcast-meta"><span><i class="material-icons">calendar_today</i> ${date}</span>${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}</div><h3>${podcast.title}</h3><p style="word-break: break-all; word-wrap: break-word; max-width: 18em; font-size:14px;">${podcast.description}</p><div class="card-actions"><button class="mdc-button"><i class="material-icons">play_arrow</i> Play Episode</button></div></div>`;
+                }).join('');
+            }
+            elements.podcastLoading.style.display = 'none';
+            elements.podcastList.style.display = 'block';
+            if (totalPages > 1) {
+                elements.podcastPagination.style.display = 'flex';
+                renderPagination('podcastPagination', currentPage, totalPages, (p) => loadPodcasts(p));
+            }
+        }
+
+        function playPodcast(podcastId) {
+            const podcast = appState.podcastData.episodes.find(p => p.id === podcastId);
+            if (!podcast || !podcast.audio) return;
+            appState.currentPodcast = podcast;
+            elements.currentPodcastPlayer.style.display = 'block';
+            elements.currentPodcastInfo.innerHTML = `<h4>${podcast.title}</h4><p>${podcast.fullDescription || podcast.description}</p><div class="podcast-meta"><span><i class="material-icons">calendar_today</i> ${new Date(podcast.pubDate).toLocaleDateString()}</span>${podcast.duration ? `<span><i class="material-icons">schedule</i> ${podcast.duration}</span>` : ''}<span><i class="material-icons">person</i> ${podcast.author}</span></div>`;
+            elements.podcastAudio.src = podcast.audio;
+            elements.podcastAudio.volume = appState.settings.podcastVolume;
+            elements.podcastAudio.play()
+                .then(() => showAlert(`Now playing: ${podcast.title}`))
+                .catch(e => console.error('Playback error:', e));
+        }
+
+        function renderPagination(containerId, currentPage, totalPages, callback) {
+            const container = document.getElementById(containerId);
+            if (!container || totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            let paginationHtml = '';
+            if (currentPage > 1) {
+                paginationHtml += `<button class="page-btn" onclick="(${callback.toString()})(${currentPage - 1})"><i class="material-icons">chevron_left</i></button>`;
+            }
+            const maxVisible = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+            let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+            if (endPage - startPage + 1 < maxVisible) startPage = Math.max(1, endPage - maxVisible + 1);
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHtml += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="(${callback.toString()})(${i})">${i}</button>`;
+            }
+            if (currentPage < totalPages) {
+                paginationHtml += `<button class="page-btn" onclick="(${callback.toString()})(${currentPage + 1})"><i class="material-icons">chevron_right</i></button>`;
+            }
+            container.innerHTML = paginationHtml;
+        }
+
+        function showAlert(message, type = 'success') {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type}`;
+            alertDiv.innerHTML = `<p>${message}</p><button class="mdc-button text" onclick="this.parentElement.remove()" style="float: right; margin-top: -8px;"><i class="material-icons">close</i></button>`;
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent.firstChild) mainContent.insertBefore(alertDiv, mainContent.firstChild);
+            else mainContent.appendChild(alertDiv);
+            setTimeout(() => { if (alertDiv.parentElement) alertDiv.remove(); }, 5000);
+        }
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text)
+                .then(() => showAlert('Copied to clipboard!'))
+                .catch(() => showAlert('Failed to copy', 'error'));
+        }
+
+        document.getElementById('prayerForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = {
+                name: document.getElementById('prayerName').value,
+                email: document.getElementById('prayerEmail').value,
+                phone: document.getElementById('prayerPhone').value,
+                request: document.getElementById('prayerRequest').value,
+                followup: document.getElementById('prayerFollowup').checked
+            };
+            try {
+                await emailjs.send('service_bg462kr', 'template_6pyapsf', {
+                    to_email: 'support@kingdomlifestyleradio.com',
+                    from_name: formData.name,
+                    from_email: formData.email,
+                    phone: formData.phone,
+                    message: formData.request,
+                    followup: formData.followup ? 'Yes' : 'No'
+                });
+                showAlert('Prayer request submitted! Our team will pray for you.');
+                this.reset();
+            } catch (error) {
+                console.error('Email error:', error);
+                showAlert('Thank you for your prayer request. Our team will pray for you.', 'success');
+                this.reset();
+            }
+        });
+
+        document.getElementById('contactForm')?.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = {
+                name: document.getElementById('contactName').value,
+                email: document.getElementById('contactEmail').value,
+                subject: document.getElementById('contactSubject').value,
+                message: document.getElementById('contactMessage').value
+            };
+            try {
+                await emailjs.send('service_bg462kr', 'template_6pyapsf', {
+                    to_email: 'robinlaura101@gmail.com',
+                    from_name: formData.name,
+                    from_email: formData.email,
+                    subject: formData.subject,
+                    message: formData.message
+                });
+                showAlert('Message sent! We\'ll get back to you soon.');
+                this.reset();
+            } catch (error) {
+                console.error('Email error:', error);
+                showAlert('Thank you for your message. We\'ll be in touch soon.', 'success');
+                this.reset();
+            }
+        });
+
+        function setupPerformanceOptimizations() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js').catch(console.error);
+            }
+            const criticalImages = ['images/logo.png', 'images/herr1.webp', 'images/herr2.webp', 'images/herr3.webp', 'images/herr4.webp'];
+            criticalImages.forEach(src => {
+                const link = document.createElement('link');
+                link.rel = 'preload';
+                link.as = 'image';
+                link.href = src;
+                document.head.appendChild(link);
+            });
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.src = img.dataset.src;
+                            img.classList.remove('lazy');
+                            imageObserver.unobserve(img);
+                        }
+                    });
+                });
+                document.querySelectorAll('img[data-src]').forEach(img => imageObserver.observe(img));
+            }
+        }
+
         function setupEventListeners() {
             initRadio();
             loadSettings();
@@ -3078,9 +3242,7 @@
         if (appState.currentPage === 'blog') loadHeroSlider();
     }
 
-    // (All the other functions like loadHeroSlider, loadBlogPosts, loadPodcasts, etc. are already included in the big heredoc, I'll ensure they are in the final file. The heredoc above cut off due to length, but I'll include the full script in the answer.)
-
     document.addEventListener('DOMContentLoaded', initLoadingScreen);
-</script>
+    </script>
 </body>
 </html>
