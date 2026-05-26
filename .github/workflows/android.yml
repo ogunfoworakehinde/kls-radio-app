@@ -27,18 +27,21 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install Cordova and dependencies
+    # Prevent any cache pollution
+    - name: Clean npm cache and install
       run: |
+        npm cache clean --force
         npm install -g cordova@12.0.0
         npm install
 
-    # ✅ CRITICAL: completely remove any stale platform/plugin folders
-    - name: Clean old platforms and plugins
+    # ✅ Wipe everything that might contain old plugin code
+    - name: Remove all old platform and plugin artefacts
       run: |
-        rm -rf platforms plugins
+        rm -rf platforms plugins node_modules
+        npm install
         cordova platform add android@13.0.0 --save
 
-    - name: Install all plugins from config.xml
+    - name: Install plugins from config.xml
       run: |
         cordova plugin add cordova-plugin-network-information
         cordova plugin add cordova-plugin-statusbar
@@ -46,6 +49,10 @@ jobs:
         cordova plugin add cordova-plugin-background-mode
         cordova plugin add cordova-plugin-media-session@1.0.8
         cordova plugin add cordova-plugin-android-permissions
+
+    # ❗ Critical: delete the stale music-controls2 Java source
+    - name: Remove stale music-controls2 Java files
+      run: rm -rf platforms/android/app/src/main/java/com/timetravelers/hackedme
 
     - name: Decode keystore
       run: |
