@@ -35,7 +35,7 @@
         <!-- ✅ THE ONLY SPLASH PREFERENCES YOU NEED -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="www/res/screen/android/splash.png" />
-        <preference name="SplashScreenBackgroundColor" value="#ffffff" />
+        <preference name="SplashScreenBackgroundColor" value="#fff" />
         <preference name="SplashScreenDelay" value="3000" />
 
         <!-- Launcher icons -->
