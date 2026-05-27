@@ -4,18 +4,26 @@
         version="1.0.0">
     <name>KLS Media Controls</name>
     <description>Foreground service media notification for KLS Radio</description>
+
     <js-module src="www/KLSMediaControls.js" name="KLSMediaControls">
         <clobbers target="KLSMediaControls" />
     </js-module>
+
     <platform name="android">
+        <!-- Required AndroidX media library -->
+        <framework src="androidx.media:media:1.7.0" />
+
         <config-file target="AndroidManifest.xml" parent="/manifest/application">
-            <service android:name="com.kingdomlifestyleradio.klsradio.KLSMediaService"
-                     android:foregroundServiceType="mediaPlayback"
-                     android:exported="false" />
+            <service
+                android:name="com.kingdomlifestyleradio.klsradio.KLSMediaService"
+                android:foregroundServiceType="mediaPlayback"
+                android:exported="false" />
         </config-file>
+
+        <!-- Correct target-dir – relative to platforms/android/ -->
         <source-file src="src/android/KLSMediaService.java"
-                     target-dir="src/main/java/com/kingdomlifestyleradio/klsradio" />
+                     target-dir="app/src/main/java/com/kingdomlifestyleradio/klsradio" />
         <source-file src="src/android/KLSMediaControlsPlugin.java"
-                     target-dir="src/main/java/com/kingdomlifestyleradio/klsradio" />
+                     target-dir="app/src/main/java/com/kingdomlifestyleradio/klsradio" />
     </platform>
 </plugin>

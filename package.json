@@ -12,7 +12,6 @@
     "run:android": "cordova run android"
   },
   "dependencies": {
-    "cordova-android": "^13.0.0",
     "cordova-plugin-android-permissions": "^1.1.5",
     "cordova-plugin-background-mode": "^0.7.3",
     "cordova-plugin-device": "^3.0.0",
@@ -23,7 +22,9 @@
     "cordova-plugin-statusbar": "^3.0.0"
   },
   "cordova": {
-    "platforms": [],
+    "platforms": [
+      "android"
+    ],
     "plugins": {
       "cordova-plugin-android-permissions": {},
       "cordova-plugin-background-mode": {},
@@ -37,6 +38,7 @@
     }
   },
   "devDependencies": {
+    "cordova-android": "^15.0.0",
     "kls-media-controls": "file:custom-plugins/kls-media-controls"
   }
 }
