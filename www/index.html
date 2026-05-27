@@ -2045,15 +2045,13 @@ const isCordova = !!window.cordova;
 let radioTransitioning = false;
 let transitionTimeout = null;
 
-function safePlayPauseToggle() {
-    // Ignore if already transitioning
+// This is the debounced toggle – replaces the old toggleRadioPlay
+function toggleRadioPlay() {
     if (radioTransitioning) return;
     radioTransitioning = true;
     
-    // Clear any previous timeout
     if (transitionTimeout) clearTimeout(transitionTimeout);
     
-    // Perform the actual toggle immediately
     if (appState.radioPlaying) {
         appState.radioShouldPlay = false;
         pauseRadio();
@@ -2062,7 +2060,6 @@ function safePlayPauseToggle() {
         playRadio();
     }
     
-    // Allow toggles again after a short delay (prevents rapid double‑clicks)
     transitionTimeout = setTimeout(() => {
         radioTransitioning = false;
     }, 500);
@@ -2113,7 +2110,6 @@ document.addEventListener('deviceready', function() {
             permissions.POST_NOTIFICATIONS,
             function(status) {
                 console.log('Notification permission: ' + status.hasPermission);
-                // Permission granted/denied – we'll still try to start the service
             },
             function(error) {
                 console.error('Permission request error: ' + error);
@@ -2127,7 +2123,7 @@ document.addEventListener('deviceready', function() {
     }
 }, false);
 
-// ========== RADIO FUNCTIONS (with debounce + notification sync) ==========
+// ========== RADIO FUNCTIONS (with notification sync) ==========
 const radioStability = {
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
@@ -2202,7 +2198,6 @@ function switchChannel(direction) {
     updateRadioDisplay();
     updateChannelSwitcher();
     if (appState.radioPlaying) {
-        // If already playing, restart with new station
         playRadio();
     }
 }
@@ -2553,8 +2548,8 @@ function initMainApp() {
         updateRadioDisplay();
         elements.radioAudio.volume = appState.settings.radioVolume;
         elements.radioAudio.crossOrigin = 'anonymous';
-        // Use debounced toggle
-        elements.playPauseBtn.addEventListener('click', safePlayPauseToggle);
+        // Use debounced toggle (toggleRadioPlay)
+        elements.playPauseBtn.addEventListener('click', toggleRadioPlay);
         elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
         elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
         elements.channelMenuBtn.addEventListener('click', toggleChannelSwitcher);
@@ -2996,18 +2991,28 @@ function initMainApp() {
     }
 
     // Expose to global scope
-    window.navigateTo = navigateTo; window.loadSinglePost = loadSinglePost; window.toggleRadioPlay = toggleRadioPlay;
-    window.copyToClipboard = copyToClipboard; window.sharePost = sharePost; window.playPodcast = playPodcast;
-    window.searchBlogPosts = searchBlogPosts; window.saveSettings = saveSettings; window.resetSettings = resetSettings;
-    window.toggleMoreModal = toggleMoreModal; window.loadHeroSlider = loadHeroSlider;
-    window.loadBlogPosts = loadBlogPosts; window.loadPodcasts = loadPodcasts;
-    window.playRadio = playRadio; window.pauseRadio = pauseRadio; window.stopRadio = stopRadio;
+    window.navigateTo = navigateTo;
+    window.loadSinglePost = loadSinglePost;
+    window.toggleRadioPlay = toggleRadioPlay;   // Now correctly references the debounced function
+    window.copyToClipboard = copyToClipboard;
+    window.sharePost = sharePost;
+    window.playPodcast = playPodcast;
+    window.searchBlogPosts = searchBlogPosts;
+    window.saveSettings = saveSettings;
+    window.resetSettings = resetSettings;
+    window.toggleMoreModal = toggleMoreModal;
+    window.loadHeroSlider = loadHeroSlider;
+    window.loadBlogPosts = loadBlogPosts;
+    window.loadPodcasts = loadPodcasts;
+    window.playRadio = playRadio;
+    window.pauseRadio = pauseRadio;
+    window.stopRadio = stopRadio;
 
     setupEventListeners();
-    
+
     // Initialize the custom foreground‑service widget (replaces Web Media Session)
     initMediaControls();
-    
+
     if (appState.currentPage === 'blog') loadHeroSlider();
 }
 
