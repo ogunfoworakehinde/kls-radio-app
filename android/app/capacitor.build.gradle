@@ -2,8 +2,8 @@
 
 android {
   compileOptions {
-      sourceCompatibility JavaVersion.VERSION_21
-      targetCompatibility JavaVersion.VERSION_21
+      sourceCompatibility JavaVersion.VERSION_17
+      targetCompatibility JavaVersion.VERSION_17
   }
 }
 
@@ -11,8 +11,8 @@ apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
     implementation project(':capacitor-app')
     implementation project(':capacitor-splash-screen')
-    implementation project(':capacitor-music-controls-plugin')
-    implementation "androidx.media:media:1.7.0"
+    implementation project(':whiskeredaxe-capacitor-music-controls-plugin')
+
 }
 
 

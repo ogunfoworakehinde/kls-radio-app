@@ -2039,12 +2039,11 @@
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
 <script type="module">
-// ========== CAPACITOR IMPORTS (loaded as ES module) ==========
+// ========== CAPACITOR IMPORTS ==========
 import { SplashScreen } from '@capacitor/splash-screen';
-import { CapacitorMusicControls } from 'capacitor-music-controls-plugin';
+import { CapacitorMusicControls } from '@whiskeredaxe/capacitor-music-controls-plugin';
 
 // ========== GLOBAL STATE ==========
-// (Capacitor is always available once the page loads)
 const isCapacitor = true;
 
 // ========== MEDIA CONTROLS (Persistent Notification) ==========
@@ -2061,7 +2060,7 @@ async function initMediaControls() {
             hasClose: true,
             notificationChannelName: 'KLS Radio',
             notificationChannelDescription: 'Radio playback controls',
-            playIcon: 'play_arrow',      // Material icon names
+            playIcon: 'play_arrow',
             pauseIcon: 'pause',
             prevIcon: 'skip_previous',
             nextIcon: 'skip_next',
@@ -2198,7 +2197,7 @@ function switchChannel(direction) {
     }
 }
 
-// ========== STABILITY & RECONNECT (unchanged from your original) ==========
+// ========== STABILITY & RECONNECT (unchanged) ==========
 function startStabilityMonitoring() {
     stopStabilityMonitoring();
     radioStability.connectionCheckInterval = setInterval(() => {
@@ -2994,7 +2993,7 @@ function initMainApp() {
         setupPerformanceOptimizations();
     }
 
-    // Expose to global scope (keep all your original references)
+    // Expose to global scope
     window.navigateTo = navigateTo;
     window.loadSinglePost = loadSinglePost;
     window.toggleRadioPlay = () => { if (appState.radioPlaying) pauseRadio(); else playRadio(); };
