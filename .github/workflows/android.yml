@@ -30,11 +30,9 @@ jobs:
     - name: Install dependencies
       run: npm install
 
-    - name: Build web assets (if any)
-      run: echo "No web build step"
-
-    - name: Copy web assets and sync Capacitor
-      run: npx cap copy android
+    # 🔁 sync instead of copy – removes old Cordova plugin references
+    - name: Sync Capacitor (copy web + update native plugins)
+      run: npx cap sync android
 
     - name: Decode keystore
       run: |
