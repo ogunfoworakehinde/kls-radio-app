@@ -2084,6 +2084,7 @@ function clearMediaSession() {
 document.addEventListener('deviceready', function() {
     console.log('Cordova is ready!');
 
+    // Enable background mode so audio continues when minimized
     if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
         cordova.plugins.backgroundMode.enable();
     }
