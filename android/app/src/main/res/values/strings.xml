@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">KLS Radio</string>
+    <string name="title_activity_main">KLS Radio</string>
+    <string name="package_name">com.kingdomlifestyleradio.klsradio</string>
+    <string name="custom_url_scheme">com.kingdomlifestyleradio.klsradio</string>
+</resources>

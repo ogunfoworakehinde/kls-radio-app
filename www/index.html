@@ -2038,92 +2038,81 @@
     <!-- Scripts -->
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
-<script>
-const isCordova = !!window.cordova;
+<script type="module">
+// ========== CAPACITOR IMPORTS (loaded as ES module) ==========
+import { SplashScreen } from '@capacitor/splash-screen';
+import { CapacitorMusicControls } from 'capacitor-music-controls-plugin';
 
-// ========== DEBOUNCE / DOUBLE‑CLICK GUARD ==========
-let radioTransitioning = false;
-let transitionTimeout = null;
+// ========== GLOBAL STATE ==========
+// (Capacitor is always available once the page loads)
+const isCapacitor = true;
 
-// This is the debounced toggle – replaces the old toggleRadioPlay
-function toggleRadioPlay() {
-    if (radioTransitioning) return;
-    radioTransitioning = true;
-    
-    if (transitionTimeout) clearTimeout(transitionTimeout);
-    
-    if (appState.radioPlaying) {
-        appState.radioShouldPlay = false;
-        pauseRadio();
-    } else {
-        appState.radioShouldPlay = true;
-        playRadio();
+// ========== MEDIA CONTROLS (Persistent Notification) ==========
+async function initMediaControls() {
+    try {
+        await CapacitorMusicControls.create({
+            track: 'Kingdom Lifestyle Radio',
+            artist: 'Tap to play',
+            album: 'KLS Radio',
+            cover: 'img/radio_icon.png',
+            isPlaying: false,
+            hasPrev: true,
+            hasNext: true,
+            hasClose: true,
+            notificationChannelName: 'KLS Radio',
+            notificationChannelDescription: 'Radio playback controls',
+            playIcon: 'play_arrow',      // Material icon names
+            pauseIcon: 'pause',
+            prevIcon: 'skip_previous',
+            nextIcon: 'skip_next',
+            closeIcon: 'close'
+        });
+
+        // Listen to notification button events
+        CapacitorMusicControls.addListener('controlsNotification', (data) => {
+            switch (data.message) {
+                case 'music-controls-play':   playRadio(); break;
+                case 'music-controls-pause':  pauseRadio(); break;
+                case 'music-controls-destroy': stopRadio(); break;
+                case 'music-controls-next':   switchChannel(1); break;
+                case 'music-controls-previous': switchChannel(-1); break;
+            }
+        });
+
+        console.log('Media controls notification created');
+    } catch (error) {
+        console.error('Failed to create media controls:', error);
     }
-    
-    transitionTimeout = setTimeout(() => {
-        radioTransitioning = false;
-    }, 500);
-}
-
-// ========== CUSTOM MEDIA CONTROLS (Foreground Service Notification) ==========
-function initMediaControls() {
-    if (!isCordova || typeof KLSMediaControls === 'undefined') {
-        console.log('Custom media controls plugin not available');
-        return;
-    }
-
-    // Start the foreground service with initial metadata
-    KLSMediaControls.startService('Kingdom Lifestyle Radio', 'Tap to play', false, 
-        function() { console.log('Foreground service started'); },
-        function(err) { console.error('Failed to start service:', err); }
-    );
-
-    // Listen for button events from the notification
-    KLSMediaControls.listen(function(event) {
-        switch(event) {
-            case 'play':    playRadio(); break;
-            case 'pause':   pauseRadio(); break;
-            case 'stop':    stopRadio(); break;
-            case 'next':    switchChannel(1); break;
-            case 'previous': switchChannel(-1); break;
-        }
-    });
-
-    console.log('Custom media controls initialized');
 }
 
 // Update the play/pause button in the notification
-function updateMediaPlayPause(isPlaying) {
-    if (isCordova && typeof KLSMediaControls !== 'undefined') {
-        KLSMediaControls.updatePlayPause(isPlaying);
+async function updateMediaPlayPause(isPlaying) {
+    try {
+        await CapacitorMusicControls.updateIsPlaying({ isPlaying });
+    } catch (e) {
+        console.warn('updateIsPlaying failed:', e);
     }
 }
 
-// ========== CORDOVA READY ==========
-document.addEventListener('deviceready', function() {
-    console.log('Cordova is ready!');
-
-    // 1. Request notification permission (Android 13+)
-    if (isCordova && window.cordova.plugins && window.cordova.plugins.permissions) {
-        var permissions = cordova.plugins.permissions;
-        permissions.requestPermission(
-            permissions.POST_NOTIFICATIONS,
-            function(status) {
-                console.log('Notification permission: ' + status.hasPermission);
-            },
-            function(error) {
-                console.error('Permission request error: ' + error);
-            }
-        );
+// Destroy the notification when stopping radio
+async function destroyMediaControls() {
+    try {
+        await CapacitorMusicControls.destroy();
+    } catch (e) {
+        console.warn('destroy failed:', e);
     }
+}
 
-    // 2. Enable background mode (keeps WebView alive)
-    if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
-        cordova.plugins.backgroundMode.enable();
+// ========== SPLASH SCREEN HIDE ==========
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        await SplashScreen.hide();
+    } catch (e) {
+        console.warn('Could not hide splash screen');
     }
-}, false);
+});
 
-// ========== RADIO FUNCTIONS (with notification sync) ==========
+// ========== RADIO FUNCTIONS (immediate response, no double‑play) ==========
 const radioStability = {
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
@@ -2138,15 +2127,21 @@ const radioStability = {
     isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
 };
 
+let currentPlayingUrl = '';
+
 function playRadio() {
     const station = appState.stations[appState.currentStation];
     clearRadioTimeouts();
 
-    // Update notification immediately
+    if (appState.radioPlaying && currentPlayingUrl === station.url) {
+        return; // already playing this station
+    }
+
     updateMediaPlayPause(true);
 
     appState.radioShouldPlay = true;
     elements.radioAudio.src = station.url;
+    currentPlayingUrl = station.url;
     elements.radioAudio.load();
 
     const playPromise = elements.radioAudio.play();
@@ -2167,42 +2162,43 @@ function pauseRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
 
-    // Update notification immediately
     updateMediaPlayPause(false);
 
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
     appState.radioPlaying = false;
     elements.playPauseIcon.textContent = 'play_arrow';
+    currentPlayingUrl = '';
 }
 
 function stopRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
 
-    // Stop the foreground service (removes notification)
-    if (isCordova && typeof KLSMediaControls !== 'undefined') {
-        KLSMediaControls.stopService();
-    }
+    destroyMediaControls();
 
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
     elements.radioAudio.currentTime = 0;
     appState.radioPlaying = false;
     elements.playPauseIcon.textContent = 'play_arrow';
+    currentPlayingUrl = '';
 }
 
-// Global switchChannel (used by notification buttons and UI)
+// Global switchChannel – immediate, only one channel plays
 function switchChannel(direction) {
     appState.currentStation = (appState.currentStation + direction + appState.stations.length) % appState.stations.length;
     updateRadioDisplay();
     updateChannelSwitcher();
     if (appState.radioPlaying) {
+        elements.radioAudio.pause();
+        currentPlayingUrl = '';
+        appState.radioPlaying = false;
         playRadio();
     }
 }
 
-// ========== STABILITY & RECONNECT (unchanged) ==========
+// ========== STABILITY & RECONNECT (unchanged from your original) ==========
 function startStabilityMonitoring() {
     stopStabilityMonitoring();
     radioStability.connectionCheckInterval = setInterval(() => {
@@ -2498,7 +2494,7 @@ const elements = {
     blogPagination: document.getElementById('blogPagination')
 };
 
-// ========== MAIN APP INITIALIZATION ==========
+// ========== MAIN APP INITIALIZATION (unchanged navigation, blog, podcast, etc.) ==========
 function initMainApp() {
     function navigateTo(page) {
         appState.currentPage = page;
@@ -2548,8 +2544,11 @@ function initMainApp() {
         updateRadioDisplay();
         elements.radioAudio.volume = appState.settings.radioVolume;
         elements.radioAudio.crossOrigin = 'anonymous';
-        // Use debounced toggle (toggleRadioPlay)
-        elements.playPauseBtn.addEventListener('click', toggleRadioPlay);
+        // Immediate play/pause toggle
+        elements.playPauseBtn.addEventListener('click', () => {
+            if (appState.radioPlaying) { pauseRadio(); }
+            else { playRadio(); }
+        });
         elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
         elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
         elements.channelMenuBtn.addEventListener('click', toggleChannelSwitcher);
@@ -2560,7 +2559,12 @@ function initMainApp() {
                     appState.currentStation = channel;
                     updateRadioDisplay();
                     updateChannelSwitcher();
-                    if (appState.radioPlaying) playRadio();
+                    if (appState.radioPlaying) {
+                        elements.radioAudio.pause();
+                        currentPlayingUrl = '';
+                        appState.radioPlaying = false;
+                        playRadio();
+                    }
                     toggleChannelSwitcher();
                 }
             });
@@ -2990,10 +2994,10 @@ function initMainApp() {
         setupPerformanceOptimizations();
     }
 
-    // Expose to global scope
+    // Expose to global scope (keep all your original references)
     window.navigateTo = navigateTo;
     window.loadSinglePost = loadSinglePost;
-    window.toggleRadioPlay = toggleRadioPlay;   // Now correctly references the debounced function
+    window.toggleRadioPlay = () => { if (appState.radioPlaying) pauseRadio(); else playRadio(); };
     window.copyToClipboard = copyToClipboard;
     window.sharePost = sharePost;
     window.playPodcast = playPodcast;
@@ -3010,7 +3014,7 @@ function initMainApp() {
 
     setupEventListeners();
 
-    // Initialize the custom foreground‑service widget (replaces Web Media Session)
+    // Create the persistent media notification
     initMediaControls();
 
     if (appState.currentPage === 'blog') loadHeroSlider();
