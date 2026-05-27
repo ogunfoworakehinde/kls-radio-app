@@ -2090,7 +2090,7 @@ document.addEventListener('deviceready', function() {
     }
 }, false);
 
-// ========== RADIO FUNCTIONS (immediate response, no double‑play) ==========
+// ========== RADIO CONTROL – IMMEDIATE & ROBUST ==========
 const radioStability = {
     reconnectAttempts: 0,
     maxReconnectAttempts: 5,
@@ -2105,19 +2105,32 @@ const radioStability = {
     isSafari: /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
 };
 
+// Prevent race conditions – only one playback action at a time
+let radioLock = false;
 let currentPlayingUrl = '';
 
 function playRadio() {
+    if (radioLock) return;                    // ignore rapid double-taps
     const station = appState.stations[appState.currentStation];
+    if (appState.radioPlaying && currentPlayingUrl === station.url) return; // already playing this station
+
+    radioLock = true;
+
+    // Immediately stop any ongoing attempt
     clearRadioTimeouts();
+    stopStabilityMonitoring();
 
-    if (appState.radioPlaying && currentPlayingUrl === station.url) return;
-
+    // Update lock-screen metadata
     updateMediaSession(station);
 
-    appState.radioShouldPlay = true;
-    elements.radioAudio.src = station.url;
+    // Ensure previous stream is dead
+    elements.radioAudio.pause();
+    elements.radioAudio.src = '';          // clear source to force fresh load
     currentPlayingUrl = station.url;
+    appState.radioShouldPlay = true;
+
+    // Load and play new stream
+    elements.radioAudio.src = station.url;
     elements.radioAudio.load();
 
     const playPromise = elements.radioAudio.play();
@@ -2127,14 +2140,24 @@ function playRadio() {
             elements.playPauseIcon.textContent = 'pause';
             startStabilityMonitoring();
             radioStability.lastBufferTime = Date.now();
+            radioLock = false;
         }).catch(error => {
             console.log('Play failed:', error);
+            radioLock = false;
             handlePlaybackError();
         });
+    } else {
+        // Older browsers without promise
+        appState.radioPlaying = true;
+        elements.playPauseIcon.textContent = 'pause';
+        startStabilityMonitoring();
+        radioStability.lastBufferTime = Date.now();
+        radioLock = false;
     }
 }
 
 function pauseRadio() {
+    radioLock = false;                     // release any pending lock
     clearRadioTimeouts();
     stopStabilityMonitoring();
     clearMediaSession();
@@ -2147,24 +2170,30 @@ function pauseRadio() {
 }
 
 function stopRadio() {
+    radioLock = false;
     clearRadioTimeouts();
     stopStabilityMonitoring();
     clearMediaSession();
 
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
+    elements.radioAudio.src = '';
     elements.radioAudio.currentTime = 0;
     appState.radioPlaying = false;
     elements.playPauseIcon.textContent = 'play_arrow';
     currentPlayingUrl = '';
 }
 
+// Immediate channel switch – kills current stream before starting new one
 function switchChannel(direction) {
     appState.currentStation = (appState.currentStation + direction + appState.stations.length) % appState.stations.length;
     updateRadioDisplay();
     updateChannelSwitcher();
+
     if (appState.radioPlaying) {
+        // Force stop current playback and start fresh
         elements.radioAudio.pause();
+        elements.radioAudio.src = '';
         currentPlayingUrl = '';
         appState.radioPlaying = false;
         playRadio();
@@ -2515,12 +2544,24 @@ function initMainApp() {
         updateRadioDisplay();
         elements.radioAudio.volume = appState.settings.radioVolume;
         elements.radioAudio.crossOrigin = 'anonymous';
+
+        // Play/Pause button – immediate, no debounce
         elements.playPauseBtn.addEventListener('click', () => {
-            if (appState.radioPlaying) { pauseRadio(); } else { playRadio(); }
+            if (appState.radioPlaying) {
+                pauseRadio();
+            } else {
+                playRadio();
+            }
         });
+
+        // Previous / Next buttons – immediate channel switching
         elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
         elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
+
+        // Channel menu button
         elements.channelMenuBtn.addEventListener('click', toggleChannelSwitcher);
+
+        // Channel switcher options
         document.querySelectorAll('.channel-option').forEach(option => {
             option.addEventListener('click', function() {
                 const channel = parseInt(this.dataset.channel);
@@ -2529,7 +2570,9 @@ function initMainApp() {
                     updateRadioDisplay();
                     updateChannelSwitcher();
                     if (appState.radioPlaying) {
+                        // Force fresh start on the new channel
                         elements.radioAudio.pause();
+                        elements.radioAudio.src = '';
                         currentPlayingUrl = '';
                         appState.radioPlaying = false;
                         playRadio();
@@ -2538,11 +2581,14 @@ function initMainApp() {
                 }
             });
         });
+
+        // Close channel switcher when clicking outside
         document.addEventListener('click', (e) => {
             if (!elements.channelSwitcher.contains(e.target) && !elements.channelMenuBtn.contains(e.target) && elements.channelSwitcher.classList.contains('active')) {
                 toggleChannelSwitcher();
             }
         });
+
         initRadioStability();
         if (appState.settings.autoPlay && !appState.radioPlaying) {
             setTimeout(() => playRadio(), 1000);
@@ -2973,7 +3019,7 @@ function initMainApp() {
     window.stopRadio = stopRadio;
 
     setupEventListeners();
-    initMediaSession();   // Initialize Web Media Session API
+    initMediaSession();   // Initialize Web Media Session API for lock screen
     if (appState.currentPage === 'blog') loadHeroSlider();
 }
 
