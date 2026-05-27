@@ -2038,78 +2038,56 @@
     <!-- Scripts -->
 <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3.2.0/dist/email.min.js"></script>
-<script type="module">
-// ========== CAPACITOR IMPORTS ==========
-import { SplashScreen } from '@capacitor/splash-screen';
-import { CapacitorMusicControls } from '@whiskeredaxe/capacitor-music-controls-plugin';
+<script>
+const isCordova = !!window.cordova;
 
-// ========== GLOBAL STATE ==========
-const isCapacitor = true;
-
-// ========== MEDIA CONTROLS (Persistent Notification) ==========
-async function initMediaControls() {
-    try {
-        await CapacitorMusicControls.create({
-            track: 'Kingdom Lifestyle Radio',
-            artist: 'Tap to play',
-            album: 'KLS Radio',
-            cover: 'img/radio_icon.png',
-            isPlaying: false,
-            hasPrev: true,
-            hasNext: true,
-            hasClose: true,
-            notificationChannelName: 'KLS Radio',
-            notificationChannelDescription: 'Radio playback controls',
-            playIcon: 'play_arrow',
-            pauseIcon: 'pause',
-            prevIcon: 'skip_previous',
-            nextIcon: 'skip_next',
-            closeIcon: 'close'
-        });
-
-        // Listen to notification button events
-        CapacitorMusicControls.addListener('controlsNotification', (data) => {
-            switch (data.message) {
-                case 'music-controls-play':   playRadio(); break;
-                case 'music-controls-pause':  pauseRadio(); break;
-                case 'music-controls-destroy': stopRadio(); break;
-                case 'music-controls-next':   switchChannel(1); break;
-                case 'music-controls-previous': switchChannel(-1); break;
-            }
-        });
-
-        console.log('Media controls notification created');
-    } catch (error) {
-        console.error('Failed to create media controls:', error);
+// ========== WEB MEDIA SESSION API (Lock Screen Metadata & Media Keys) ==========
+function initMediaSession() {
+    if (!('mediaSession' in navigator)) {
+        console.log('Media Session API not available');
+        return;
     }
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: 'Kingdom Lifestyle Radio',
+        artist: 'Tap to play',
+        album: 'KLS Radio',
+        artwork: [{ src: 'img/radio_icon.png', sizes: '512x512', type: 'image/png' }]
+    });
+
+    navigator.mediaSession.setActionHandler('play', function() { playRadio(); });
+    navigator.mediaSession.setActionHandler('pause', function() { pauseRadio(); });
+    navigator.mediaSession.setActionHandler('stop', function() { stopRadio(); });
+    navigator.mediaSession.setActionHandler('previoustrack', function() { switchChannel(-1); });
+    navigator.mediaSession.setActionHandler('nexttrack', function() { switchChannel(1); });
+
+    console.log('Web Media Session API initialized');
 }
 
-// Update the play/pause button in the notification
-async function updateMediaPlayPause(isPlaying) {
-    try {
-        await CapacitorMusicControls.updateIsPlaying({ isPlaying });
-    } catch (e) {
-        console.warn('updateIsPlaying failed:', e);
-    }
+function updateMediaSession(station) {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = new MediaMetadata({
+        title: station.name,
+        artist: station.description,
+        album: 'KLS Radio',
+        artwork: [{ src: 'img/radio_icon.png', sizes: '512x512', type: 'image/png' }]
+    });
+    navigator.mediaSession.playbackState = 'playing';
 }
 
-// Destroy the notification when stopping radio
-async function destroyMediaControls() {
-    try {
-        await CapacitorMusicControls.destroy();
-    } catch (e) {
-        console.warn('destroy failed:', e);
-    }
+function clearMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.playbackState = 'none';
 }
 
-// ========== SPLASH SCREEN HIDE ==========
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await SplashScreen.hide();
-    } catch (e) {
-        console.warn('Could not hide splash screen');
+// ========== CORDOVA READY ==========
+document.addEventListener('deviceready', function() {
+    console.log('Cordova is ready!');
+
+    if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
+        cordova.plugins.backgroundMode.enable();
     }
-});
+}, false);
 
 // ========== RADIO FUNCTIONS (immediate response, no double‑play) ==========
 const radioStability = {
@@ -2132,11 +2110,9 @@ function playRadio() {
     const station = appState.stations[appState.currentStation];
     clearRadioTimeouts();
 
-    if (appState.radioPlaying && currentPlayingUrl === station.url) {
-        return; // already playing this station
-    }
+    if (appState.radioPlaying && currentPlayingUrl === station.url) return;
 
-    updateMediaPlayPause(true);
+    updateMediaSession(station);
 
     appState.radioShouldPlay = true;
     elements.radioAudio.src = station.url;
@@ -2160,8 +2136,7 @@ function playRadio() {
 function pauseRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
-
-    updateMediaPlayPause(false);
+    clearMediaSession();
 
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
@@ -2173,8 +2148,7 @@ function pauseRadio() {
 function stopRadio() {
     clearRadioTimeouts();
     stopStabilityMonitoring();
-
-    destroyMediaControls();
+    clearMediaSession();
 
     appState.radioShouldPlay = false;
     elements.radioAudio.pause();
@@ -2184,7 +2158,6 @@ function stopRadio() {
     currentPlayingUrl = '';
 }
 
-// Global switchChannel – immediate, only one channel plays
 function switchChannel(direction) {
     appState.currentStation = (appState.currentStation + direction + appState.stations.length) % appState.stations.length;
     updateRadioDisplay();
@@ -2294,9 +2267,7 @@ function handleBeforeUnload() {
     }
 }
 
-function handlePageHide() {
-    if (radioStability.isSafari) { radioStability.isBackgroundMode = true; }
-}
+function handlePageHide() { if (radioStability.isSafari) { radioStability.isBackgroundMode = true; } }
 
 function handlePageShow() {
     if (radioStability.isSafari && radioStability.isBackgroundMode) {
@@ -2449,7 +2420,7 @@ const appState = {
     settings: { theme: 'deep-blue', radioVolume: 1, podcastVolume: 1, autoPlay: true, notifications: true, dataSaver: false },
     blogPage: 1, blogPerPage: 6, podcastPage: 1, podcastPerPage: 10,
     allBlogPosts: [], filteredBlogPosts: [], blogSlides: [], currentBlogSlide: 0, blogSlideInterval: null,
-    podcastData: { episodes: [], currentPage: 1, totalPages: 1, totalEpisodes: 0, podcastInfo: { title: "Kingdom Lifestyle Podcast", description: "Welcome to Kingdom Lifestyle Podcast. A platform for the word of Faith, messages, and exhortations capable of lifting up your spirit and nourishing your soul. Join us every Friday and God bless you richly. Amen!" } },
+    podcastData: { episodes: [], currentPage: 1, totalPages: 1, totalEpisodes: 0, podcastInfo: { title: "Kingdom Lifestyle Podcast", description: "Welcome to Kingdom Lifestyle Podcast..." } },
     currentPodcast: null, radioAutoStarted: false,
     heroSlides: [], heroCurrentSlide: 0, heroAutoSlideInterval: null,
     blogPostsCache: {}, podcastCache: {},
@@ -2493,7 +2464,7 @@ const elements = {
     blogPagination: document.getElementById('blogPagination')
 };
 
-// ========== MAIN APP INITIALIZATION (unchanged navigation, blog, podcast, etc.) ==========
+// ========== MAIN APP INITIALIZATION ==========
 function initMainApp() {
     function navigateTo(page) {
         appState.currentPage = page;
@@ -2543,10 +2514,8 @@ function initMainApp() {
         updateRadioDisplay();
         elements.radioAudio.volume = appState.settings.radioVolume;
         elements.radioAudio.crossOrigin = 'anonymous';
-        // Immediate play/pause toggle
         elements.playPauseBtn.addEventListener('click', () => {
-            if (appState.radioPlaying) { pauseRadio(); }
-            else { playRadio(); }
+            if (appState.radioPlaying) { pauseRadio(); } else { playRadio(); }
         });
         elements.prevChannelBtn.addEventListener('click', () => switchChannel(-1));
         elements.nextChannelBtn.addEventListener('click', () => switchChannel(1));
@@ -2710,17 +2679,8 @@ function initMainApp() {
         dots.forEach((dot, i) => dot.style.background = i === index ? 'white' : 'transparent');
     }
 
-    function nextHeroSlide() {
-        if (appState.heroSlides.length === 0) return;
-        const nextIndex = (appState.heroCurrentSlide + 1) % appState.heroSlides.length;
-        showHeroSlide(nextIndex);
-    }
-
-    function prevHeroSlide() {
-        if (appState.heroSlides.length === 0) return;
-        const prevIndex = (appState.heroCurrentSlide - 1 + appState.heroSlides.length) % appState.heroSlides.length;
-        showHeroSlide(prevIndex);
-    }
+    function nextHeroSlide() { if (appState.heroSlides.length === 0) return; showHeroSlide((appState.heroCurrentSlide + 1) % appState.heroSlides.length); }
+    function prevHeroSlide() { if (appState.heroSlides.length === 0) return; showHeroSlide((appState.heroCurrentSlide - 1 + appState.heroSlides.length) % appState.heroSlides.length); }
 
     function startAutoSlide() {
         if (appState.heroAutoSlideInterval) clearInterval(appState.heroAutoSlideInterval);
@@ -3012,10 +2972,7 @@ function initMainApp() {
     window.stopRadio = stopRadio;
 
     setupEventListeners();
-
-    // Create the persistent media notification
-    initMediaControls();
-
+    initMediaSession();   // Initialize Web Media Session API
     if (appState.currentPage === 'blog') loadHeroSlider();
 }
 

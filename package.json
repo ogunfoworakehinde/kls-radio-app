@@ -2,23 +2,38 @@
   "name": "com.kingdomlifestyleradio.klsradio",
   "displayName": "KLS Radio",
   "version": "1.0.0",
-  "description": "KLS Radio Capacitor App",
+  "description": "KLS Radio Cordova App",
   "main": "index.js",
   "author": "Kingdom Lifestyle Radio",
   "license": "Apache-2.0",
   "scripts": {
-    "build:web": "echo 'No web build step'",
-    "build:android": "npx cap copy android && cd android && ./gradlew assembleDebug",
-    "build:android:release": "npx cap copy android && cd android && ./gradlew bundleRelease"
+    "build:android": "cordova build android",
+    "build:android:release": "cordova build android --release"
   },
   "dependencies": {
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/app": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/splash-screen": "^6.0.0",
-    "@whiskeredaxe/capacitor-music-controls-plugin": "^6.0.11"
+    "cordova-plugin-background-mode": "^0.7.3",
+    "cordova-plugin-device": "^3.0.0",
+    "cordova-plugin-file": "^6.0.2",
+    "cordova-plugin-media": "^5.0.3",
+    "cordova-plugin-network-information": "^3.0.0",
+    "cordova-plugin-powermanagement": "^1.0.5",
+    "cordova-plugin-statusbar": "^3.0.0"
+  },
+  "cordova": {
+    "platforms": [
+      "android"
+    ],
+    "plugins": {
+      "cordova-plugin-background-mode": {},
+      "cordova-plugin-device": {},
+      "cordova-plugin-file": {},
+      "cordova-plugin-media": {},
+      "cordova-plugin-network-information": {},
+      "cordova-plugin-powermanagement": {},
+      "cordova-plugin-statusbar": {}
+    }
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0"
+    "cordova-android": "^13.0.0"
   }
 }

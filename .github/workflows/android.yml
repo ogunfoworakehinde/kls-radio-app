@@ -1,4 +1,4 @@
-name: Build Android APK and AAB (Capacitor)
+name: Build Android APK and AAB
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Java 17
+    - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: temurin
@@ -27,40 +27,42 @@ jobs:
       with:
         node-version: '18'
 
-    - name: Install dependencies
-      run: npm install
+    - name: Install Cordova and dependencies
+      run: |
+        npm install -g cordova@12.0.0
+        npm install
 
-    # 🔁 sync instead of copy – removes old Cordova plugin references
-    - name: Sync Capacitor (copy web + update native plugins)
-      run: npx cap sync android
+    - name: Remove old Android platform
+      run: cordova platform rm android --nosave || true
+
+    - name: Add Android platform
+      run: cordova platform add android@13.0.0 --save
+
+    - name: Ensure required plugins
+      run: |
+        cordova plugin add cordova-plugin-network-information
+        cordova plugin add cordova-plugin-statusbar
+        cordova plugin add cordova-plugin-media@5.0.3
+        cordova plugin add cordova-plugin-background-mode
 
     - name: Decode keystore
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > klsradio-release.keystore
 
-    - name: Build debug APK
-      working-directory: android
-      run: ./gradlew assembleDebug
+    - name: Build Android AAB (Release)
+      run: cordova build android --release -- --packageType=bundle --buildConfig build.json
 
-    - name: Build release AAB
-      working-directory: android
-      run: |
-        ./gradlew bundleRelease \
-          -Pandroid.injected.signing.store.file=../klsradio-release.keystore \
-          -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
-          -Pandroid.injected.signing.key.alias=klsradio \
-          -Pandroid.injected.signing.key.password=$KEY_PASSWORD
-      continue-on-error: true
+    - name: Build Android APK (Debug)
+      run: cordova build android --debug
 
-    - name: Upload debug APK
+    - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug.apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+        name: kls-radio-release-aab
+        path: platforms/android/app/build/outputs/bundle/release/*.aab
 
-    - name: Upload release AAB
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-release.aab
-        path: android/app/build/outputs/bundle/release/app-release.aab
-      continue-on-error: true
+        name: kls-radio-debug-apk
+        path: platforms/android/app/build/outputs/apk/debug/*.apk
