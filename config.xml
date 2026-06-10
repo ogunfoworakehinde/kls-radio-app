@@ -32,6 +32,9 @@
         <preference name="AndroidXEnabled" value="true" />
         <preference name="AndroidLaunchMode" value="singleTask" />
 
+        <!-- Force all CPU architectures to be included in the AAB -->
+        <preference name="android-archive-archs" value="arm64-v8a:armeabi-v7a:x86:x86_64" />
+
         <!-- Splash Screen (white background with your custom icon) -->
         <preference name="AndroidWindowSplashScreenEnabled" value="true" />
         <preference name="AndroidWindowSplashScreenAnimatedIcon" value="www/res/screen/android/splash.png" />
@@ -45,6 +48,7 @@
         <icon density="xxhdpi" src="www/images/icon.png" />
         <icon density="xxxhdpi" src="www/images/icon.png" />
 
+        <!-- Permissions (no device‑specific restrictions) -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
             <uses-permission android:name="android.permission.INTERNET" />
             <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -53,6 +57,16 @@
             <uses-permission android:name="android.permission.WAKE_LOCK" />
         </edit-config>
 
+        <!-- Mark common hardware features as NOT required to avoid Play Store exclusions -->
+        <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest">
+            <uses-feature android:name="android.hardware.location" android:required="false" />
+            <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+            <uses-feature android:name="android.hardware.camera" android:required="false" />
+            <uses-feature android:name="android.hardware.telephony" android:required="false" />
+            <uses-feature android:name="android.hardware.wifi" android:required="false" />
+        </edit-config>
+
+        <!-- Application configuration -->
         <edit-config file="AndroidManifest.xml" mode="merge" target="/manifest/application">
             <application
                 android:allowBackup="false"
