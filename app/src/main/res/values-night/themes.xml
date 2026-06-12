@@ -1,0 +1,17 @@
+<resources>
+    <style name="Theme.KLSRRadio" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#000000</item>
+        <item name="colorPrimaryDark">#000000</item>
+        <item name="colorAccent">#FFD700</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorSurface">#121212</item>
+        <item name="colorOnSurface">#FFFFFF</item>
+        <item name="android:statusBarColor">?attr/colorPrimaryDark</item>
+        <item name="android:navigationBarColor">?attr/colorPrimaryDark</item>
+        <item name="colorNavDefault">#40B8860B</item>
+        <item name="colorNavActive">#FFD700</item>
+        <item name="colorNavTextDefault">#80FFFFFF</item>
+        <item name="colorNavTextActive">#FFFFFF</item>
+        <item name="colorLogoBorder">#FFD700</item>        <!-- gold -->
+    </style>
+</resources>

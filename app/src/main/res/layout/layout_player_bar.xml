@@ -1,0 +1,20 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="#1a235c"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="8dp">
+
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:paddingStart="8dp">
+        <TextView android:id="@+id/station_name" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="KLSR Radio" android:textColor="@android:color/white" android:textStyle="bold" />
+        <TextView android:id="@+id/station_desc" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Tap to play" android:textColor="#B3FFFFFF" android:textSize="12sp" />
+    </LinearLayout>
+
+    <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal">
+        <ImageButton android:id="@+id/btn_prev" android:layout_width="36dp" android:layout_height="36dp" android:src="@drawable/ic_skip_previous" android:background="?attr/selectableItemBackgroundBorderless" android:tint="@android:color/white" />
+        <ImageButton android:id="@+id/btn_play_pause" android:layout_width="48dp" android:layout_height="48dp" android:src="@drawable/ic_play_arrow" android:background="@drawable/circle_red_bg" android:tint="@android:color/white" />
+        <ImageButton android:id="@+id/btn_next" android:layout_width="36dp" android:layout_height="36dp" android:src="@drawable/ic_skip_next" android:background="?attr/selectableItemBackgroundBorderless" android:tint="@android:color/white" />
+        <ImageButton android:id="@+id/btn_channel_switcher" android:layout_width="36dp" android:layout_height="36dp" android:src="@drawable/ic_tune" android:background="?attr/selectableItemBackgroundBorderless" android:tint="@android:color/white" />
+    </LinearLayout>
+</LinearLayout>

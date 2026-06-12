@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/homeFragment">
+
+    <fragment android:id="@+id/homeFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.HomeFragment"
+        android:label="Home" />
+
+    <fragment android:id="@+id/podcastFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.PodcastFragment"
+        android:label="Podcasts" />
+
+    <fragment android:id="@+id/prayerFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.PrayerFragment"
+        android:label="Prayer" />
+
+    <fragment android:id="@+id/blogFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.BlogFragment"
+        android:label="Blog">
+        <action android:id="@+id/action_blog_to_singlePost"
+            app:destination="@id/singlePostFragment" />
+    </fragment>
+
+    <fragment android:id="@+id/singlePostFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.SinglePostFragment"
+        android:label="Article">
+        <argument android:name="postId" app:argType="integer" android:defaultValue="0" />
+    </fragment>
+
+    <fragment android:id="@+id/aboutFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.AboutFragment"
+        android:label="About" />
+
+    <fragment android:id="@+id/donationFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.DonationFragment"
+        android:label="Donate" />
+
+    <fragment android:id="@+id/contactFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.ContactFragment"
+        android:label="Contact" />
+
+    <fragment android:id="@+id/settingsFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.SettingsFragment"
+        android:label="Settings" />
+</navigation>

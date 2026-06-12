@@ -1,0 +1,9 @@
+<resources>
+    <color name="primary">#0a0f2d</color>
+    <color name="primary_dark">#05081a</color>
+    <color name="primary_light">#1a235c</color>
+    <color name="accent">#FF5252</color>
+    <color name="splash_bg">#05081a</color>
+    <color name="white">#FFFFFF</color>
+    <color name="text_light">#B3FFFFFF</color>
+</resources>

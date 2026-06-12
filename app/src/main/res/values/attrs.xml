@@ -1,0 +1,7 @@
+<resources>
+    <attr name="colorNavDefault" format="color" />
+    <attr name="colorNavActive" format="color" />
+    <attr name="colorNavTextDefault" format="color" />
+    <attr name="colorNavTextActive" format="color" />
+    <attr name="colorLogoBorder" format="color" />
+</resources>

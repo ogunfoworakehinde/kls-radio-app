@@ -1,0 +1,18 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/homeFragment"
+        android:title="Home"
+        android:icon="@drawable/ic_home" />
+    <item android:id="@+id/podcastFragment"
+        android:title="Podcasts"
+        android:icon="@drawable/ic_podcasts" />
+    <item android:id="@+id/prayerFragment"
+        android:title="Prayer"
+        android:icon="@drawable/ic_prayer" />
+    <item android:id="@+id/blogFragment"
+        android:title="Blog"
+        android:icon="@drawable/ic_article" />
+    <!-- "More" handled by popup, id does not match any fragment -->
+    <item android:id="@+id/moreMenuItem"
+        android:title="More"
+        android:icon="@drawable/ic_more_horiz" />
+</menu>

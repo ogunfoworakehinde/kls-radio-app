@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <application android:name=".RadioApplication" android:allowBackup="true" android:icon="@mipmap/ic_launcher" android:label="KLSR Radio" android:theme="@style/Theme.KLSRRadio" android:supportsRtl="true">
+        <activity android:name=".SplashActivity" android:exported="true" android:theme="@style/Theme.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity android:name=".MainActivity" android:theme="@style/Theme.KLSRRadio" android:exported="false"/>
+        <service android:name=".RadioService" android:foregroundServiceType="mediaPlayback" android:exported="false"/>
+    </application>
+</manifest>
