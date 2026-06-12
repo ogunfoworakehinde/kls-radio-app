@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "com.kingdomlifestyleradio.klsradio"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.kingdomlifestyleradio.klsradio"
         minSdk = 21
-        targetSdk = 34
-        versionCode = 140000
-        versionName = "14.0.0"
+        targetSdk = 35
+        versionCode = 140001
+        versionName = "14.0.1"
     }
 
     signingConfigs {
