@@ -21,7 +21,7 @@ android {
         create("release") {
             storeFile = file("klsradio-release.keystore")
             storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = "upload"
+            keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
             keyPassword = System.getenv("KEY_PASSWORD")
             storeType = "PKCS12"
         }

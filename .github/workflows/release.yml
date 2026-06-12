@@ -27,21 +27,54 @@ jobs:
           sudo apt-get install -y imagemagick
           find app/src/main/res -name "*.png" -exec mogrify -strip {} \;
 
-      - name: Decode Keystore
+      - name: Decode and convert keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > app/klsradio-release.keystore
+          set -e
+          echo "$KEYSTORE_BASE64" | base64 --decode > temp.keystore
+
+          # Try to detect the keystore type
+          STORETYPE="PKCS12"
+          if keytool -list -keystore temp.keystore -storepass "$KEYSTORE_PASSWORD" -storetype PKCS12 &>/dev/null; then
+            STORETYPE="PKCS12"
+          elif keytool -list -keystore temp.keystore -storepass "$KEYSTORE_PASSWORD" -storetype JCEKS &>/dev/null; then
+            STORETYPE="JCEKS"
+          else
+            STORETYPE="JKS"
+          fi
+          echo "Detected keystore type: $STORETYPE"
+
+          # Convert to JKS using the correct alias from secret
+          keytool -importkeystore \
+            -srckeystore temp.keystore \
+            -srcstorepass "$KEYSTORE_PASSWORD" \
+            -srckeypass "$KEY_PASSWORD" \
+            -srcstoretype "$STORETYPE" \
+            -srcalias "$KEY_ALIAS" \
+            -destkeystore app/klsradio-release.jks \
+            -deststorepass "$KEYSTORE_PASSWORD" \
+            -destkeypass "$KEY_PASSWORD" \
+            -deststoretype JKS \
+            -destalias "$KEY_ALIAS" \
+            -noprompt
 
       - name: Build release APK
         run: gradle assembleRelease
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
 
       - name: Build release AAB
         run: gradle bundleRelease
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
