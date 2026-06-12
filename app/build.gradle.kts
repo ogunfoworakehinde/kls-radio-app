@@ -19,7 +19,7 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("klsradio-release.keystore")
+            storeFile = file("klsradio-release.jks")
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
             keyPassword = System.getenv("KEY_PASSWORD")
