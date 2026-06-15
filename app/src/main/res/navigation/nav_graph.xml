@@ -44,4 +44,10 @@
     <fragment android:id="@+id/settingsFragment"
         android:name="com.kingdomlifestyleradio.klsradio.ui.SettingsFragment"
         android:label="Settings" />
+
+<!-- append to existing file -->
+    <fragment android:id="@+id/noNetworkFragment"
+        android:name="com.kingdomlifestyleradio.klsradio.ui.NoNetworkFragment"
+        android:label="No Network" />
+
 </navigation>
