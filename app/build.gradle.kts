@@ -13,8 +13,8 @@ android {
         applicationId = "com.kingdomlifestyleradio.klsradio"
         minSdk = 21
         targetSdk = 35
-        versionCode = 140002
-        versionName = "14.0.2"
+        versionCode = 140003
+        Version name = "14.0.3"
     }
 
     signingConfigs {
