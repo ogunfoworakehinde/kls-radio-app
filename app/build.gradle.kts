@@ -14,7 +14,7 @@ android {
         minSdk = 21
         targetSdk = 35
         versionCode = 140003
-        Version name = "14.0.3"
+        versionName = "14.0.3"
     }
 
     signingConfigs {
@@ -36,8 +36,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = Javaversion.VERSION_17
+        targetCompatibility = Javaversion.VERSION_17
     }
 
     kotlinOptions {
