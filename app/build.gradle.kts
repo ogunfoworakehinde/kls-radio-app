@@ -1,5 +1,3 @@
-import com.android.build.gradle.internal.dsl.SigningConfig
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -23,7 +21,7 @@ android {
             storePassword = System.getenv("KEYSTORE_PASSWORD")
             keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
             keyPassword = System.getenv("KEY_PASSWORD")
-            storeType = "PKCS12"
+            storeType = "JKS"
         }
     }
 
@@ -36,8 +34,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = Javaversion.VERSION_17
-        targetCompatibility = Javaversion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     kotlinOptions {
